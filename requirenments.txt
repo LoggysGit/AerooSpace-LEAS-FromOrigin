@@ -1,0 +1,16 @@
+# UI Framework
+PySide6>=6.6.0
+
+# Network & API
+httpx>=0.27.0
+playwrite
+
+# AI Engine
+llama-cpp-python>=0.2.79
+
+# Smart Web Scraping
+crawl4ai>=0.4.0
+
+# Utils & Export
+pandas>=2.0.0
+python-dotenv>=1.0.0

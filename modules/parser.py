@@ -1,57 +1,55 @@
+# - Tools -
 import asyncio
 import httpx
 import os
+# - Dotenv -
 from dotenv import load_dotenv
-
 load_dotenv()
+# - Parse Dependences -
+import geomag
 
+# - Constants & Defines -
+# Altitude to Pressure Mapping: 10m, 100m, 200m, 500m, 1km, 2km, 5km, 10km, 15km, 20km, 30km
+PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
+# - Keys -
+NASA_KEY = os.getenv("NASA_API_KEY")
+SPACETRACK_LOGIN = os.getenv("SPACETRACK_USER")
+SPACETRACK_PASSW = os.getenv("SPACETRACK_PASSWORD")
+NOTAM_KEY = os.getenv("FAA_NOTAM_KEY")
+OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY")
+WAQI_TOKEN = os.getenv("WAQI_TOKEN")
+# - Refers -
 APIS = {
-    "NASA": "https://api.nasa.gov/insight_weather/",
+    # NASA: Solar flares and Radiation (Space Weather)
+    "NASA_DONKI": "https://api.nasa.gov/DONKI/notifications",
+    # Space-Track: TLE Data for debris and satellites
+    "SPACETRACK_AUTH": "https://www.space-track.org/ajaxauth/login",
+    "SPACETRACK_QUERY": "https://www.space-track.org/basicspacedata/query/class/tle_latest/ORDINAL/1/format/json",
+    # OpenWeather: Ground level pressure, humidity and icons
+    "OPENWEATHER": "https://api.openweathermap.org/data/2.5/weather",
+    # OpenMeteo: High altitude wind, temp and air density (Pressure levels)
     "METEO": "https://api.open-meteo.com/v1/forecast",
-    "AIR": "https://air-quality-api.open-meteo.com/v1/air-quality",
-    "ELEVATION": "https://api.opentopodata.org/v1/test-dataset",
-    "GEO": "https://nominatim.openstreetmap.org/reverse"
+    # OpenStreetMap: Reverse geocoding (City/Country name)
+    "OSM": "https://nominatim.openstreetmap.org/reverse",
+    # OpenTopo: Surface elevation (SRTM 30m model)
+    "OPENTOPO": "https://api.opentopodata.org/v1/srtm30m",
+    # WAQI: Ground air quality sensors (Chemical composition)
+    "WAQI": "https://api.waqi.info/feed/geo:",
+    # FAA: NOTAMs (Airspace closures)
+    "NOTAM": "https://notams.aim.faa.gov/notamSearch/search"
 }
 
-NASA_KEY = os.getenv("NASA_API_KEY", "DEMO_KEY")
-
-async def fetch_all_data(lat, lon):
-    async with httpx.AsyncClient(timeout=10.0) as client:
-
-        tasks = [
-            # 1. Weather
-            client.get(APIS["METEO"], params={
-                "latitude": lat, "longitude": lon,
-                "current": ["temperature_2m", "relative_humidity_2m", "surface_pressure"],
-                "hourly": "temperature_2m", "forecast_days": 14
-            }),
+class DataControlManager:    
+    async def fetch_all_data(lat, lon):
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            tasks = [
+            ]
+    
+            # Start Parsing
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # 2. Air
-            client.get(APIS["AIR"], params={
-                "latitude": lat, "longitude": lon,
-                "current": ["european_aqi", "pm2_5", "nitrogen_dioxide", "ozone"]
-            }),
+            # Assemble final Data Packet
+            results = {
+            }
             
-            # 3. Relief
-            client.get(APIS["ELEVATION"], params={
-                "locations": f"{lat},{lon}"
-            }),
-            
-            # 4. Geo
-            client.get(APIS["GEO"], params={
-                "lat": lat, "lon": lon, "format": "json"
-            }, headers={"User-Agent": "AerooSpace_B2B_App"})
-        ]
-
-        # Start Parsing
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Assemble final Data Packet
-        results = {
-            "location": responses[3].json() if not isinstance(responses[3], Exception) else "Unknown",
-            "weather": responses[0].json() if not isinstance(responses[0], Exception) else None,
-            "air": responses[1].json() if not isinstance(responses[1], Exception) else None,
-            "surface": responses[2].json() if not isinstance(responses[2], Exception) else None
-        }
-        
-        return results
+            return results

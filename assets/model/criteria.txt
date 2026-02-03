@@ -1,4 +1,0 @@
-* Small weight (less than 6GB)
-* Can suit roles
-* Very strong data analysis abilities
-* Can write and explain anything easy

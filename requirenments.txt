@@ -1,9 +1,13 @@
 # UI Framework
 PySide6>=6.6.0
 
-# Network & API
+# Network
 httpx>=0.27.0
 playwright
+
+# Data Dependences
+geomag
+skyfield
 
 # AI Engine
 llama-cpp-python>=0.2.79

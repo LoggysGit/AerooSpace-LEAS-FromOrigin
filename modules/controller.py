@@ -4,8 +4,8 @@ class AIModel:
         self.role = role
 
     async def analyze(self, data, prompt):
-        ans = ""
-        return ans
+        answer = ""
+        return answer
     
     async def ask(self, prompt):
         answer = ""

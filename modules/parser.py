@@ -9,7 +9,7 @@ load_dotenv()
 import geomag
 
 # - Constants & Defines -
-# Altitude to Pressure Mapping: 10m, 100m, 200m, 500m, 1km, 2km, 5km, 10km, 15km, 20km, 30km
+# Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
 # - Keys -
 NASA_KEY = os.getenv("NASA_API_KEY")

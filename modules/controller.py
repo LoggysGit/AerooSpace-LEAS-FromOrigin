@@ -3,11 +3,10 @@ import asyncio
 
 class AIModel:
     def __init__(self, model_path, role):
-        # Setting up the model for your RTX 3050 (4GB VRAM)
         self.llm = Llama(
             model_path=model_path,
             n_gpu_layers=-1,  # Try to offload all layers to GPU
-            n_ctx=4096,       # Context window for large JSON data
+            n_ctx=4096,       # Context window
             verbose=False     # Disable logs for clean output
         )
         self.role = role
@@ -15,18 +14,16 @@ class AIModel:
 
     async def analyze(self, data, prompt):
         """
-        One-shot analysis of provided aerospace data.
+        One-shot analysis of provided data
         """
-        # Formating the request with data and specific user prompt
-        user_message = f"DATA: {data}\n\nQUESTION: {prompt}"
-        
-        # We don't save analysis to history to keep context clean for chatting
+        user_message = f"DATA: {data}\n\nQUESTION: {prompt}" # Formating the request with data and specific user prompt
+
         messages = [
             {"role": "system", "content": self.role},
             {"role": "user", "content": user_message}
         ]
         
-        # Running in a thread pool to avoid freezing the PySide6 UI
+        # Running in a thread pool to avoid GUI freezing
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self._generate, messages)
         
@@ -34,19 +31,19 @@ class AIModel:
 
     async def ask(self, prompt):
         """
-        Continuous dialogue (review review, consulting).
+        Continuous dialogue
         """
-        self.chat_history.append({"role": "user", "content": prompt})
+        self.chat_history.append({"role": "user", "content": prompt}) # Add prompt to history
         
         loop = asyncio.get_event_loop()
         answer = await loop.run_in_executor(None, self._generate, self.chat_history)
         
-        self.chat_history.append({"role": "assistant", "content": answer})
+        self.chat_history.append({"role": "assistant", "content": answer}) # Add answer to history
         return answer
 
     def _generate(self, messages):
         """
-        Internal sync method for generation.
+        Internal sync method
         """
         output = self.llm.create_chat_completion(
             messages=messages,

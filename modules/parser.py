@@ -56,32 +56,64 @@ class DataControlManager:
 
     # = Data =
     data = {
-        "location": "",
-        "wind": [[0, "N"], [0, "WN"], ],
-        "aqi": {
-            "pm2.5": 0,
-            "pm5.0": 0,
-            
+        "location": {
+            "name": "",      # From OSM
+            "elevation": 0   # From OpenTopo
         },
-        "weather-forecast": ["", "", "", "", "", "", ""],
-        "average-humidity": 0,
-        "air": {
+        "wind_profile": [
+            # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+            [10, 5.2, 180, 15], 
+            [100, 7.1, 185, 14],
+            [200, 7.1, 185, 14],
+            [500, 7.1, 185, 14],
+            [1000, 7.1, 185, 14],
+            [2000, 7.1, 185, 14],
+            [3500, 7.1, 185, 14],
+            [5000, 7.1, 185, 14],
+            [10000, 7.1, 185, 14],
+            [20000, 7.1, 185, 14],
+            [25000, 7.1, 185, 14],
+            [30000, 7.1, 185, 14],
+        ],
+        "aqi": {
+            "pm2_5": 0,
+            "pm10": 0,
             "no2": 0,
             "so2": 0,
-            "co": 0,
             "o3": 0,
-
+            "co": 0
         },
-        "space-objects": [],
-        "magnetosphere": 0,
-        "kp-index": 0,
-        "sun-position": [],
-        "moon-position": [],
-        "xray": 0,
+        "weather_summary": {
+            "pressure_surface": 0, # Pressure on surface
+            "average_humidity": 0, # Humidity in lower atmosphere
+            "cloud_cover": 0,      # In % (Critical for optical tracking)
+            "visibility": 0,       # In meters
+            "forecast_7d": [
+                "Sunny",
+                "Cloudy",
+                "Rainy",
+                "Snowy",
+                "Cloudy",
+                "Sunny",
+                "Sunny"
+            ]
+        },
+        "space_environment": {
+            "kp_index": 0,         # From NASA (0-9)
+            "xray_flux": 0,        # From NASA (Solar flares)
+            "mag_declination": 0,  # From WMM (Degrees)
+            "sun_pos": [0, 0],     # [Azimuth, Elevation]
+            "moon_pos": [0, 0],    # [Azimuth, Elevation]
+            "objects_in_radius": [] # List of TLE/Debris from Space-Track
+        },
         "surface": {
-            "height": 0,
-            "peak-delta": 0,
-            "degree": 0
+            "height_msl": 0,
+            "slope_degree": 0,     # Surface flatness
+            "terrain_type": ""     # Soil/Rock/Water
+        },
+        "aviation": {
+            "notams": [],          # Active warnings
+            "airspace_status": ""  # Open/Closed
         }
     }
 

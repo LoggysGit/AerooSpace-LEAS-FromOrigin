@@ -1,3 +1,4 @@
+AI Requirenments:
 * Small weight (less than 6GB)
 * Can suit roles
 * Very strong data analysis abilities

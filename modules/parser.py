@@ -11,6 +11,9 @@ import geomag
 # - Constants & Defines -
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
+FORECAST_WINDOW = 7
+GROUND_CHECK_RADIUS = 50
+SPACE_CHECK_RADIUS = 250
 # - Keys -
 NASA_KEY = os.getenv("NASA_API_KEY")
 SPACETRACK_LOGIN = os.getenv("SPACETRACK_USER")
@@ -39,8 +42,51 @@ APIS = {
     "NOTAM": "https://notams.aim.faa.gov/notamSearch/search"
 }
 
-class DataControlManager:    
-    async def fetch_all_data(lat, lon):
+class DataControlManager:
+    # = Input =
+    input_data = {
+        "coordinates": [0, 0],
+        "timestamp": "2000-01-01T12:00:00Z",
+    }
+
+    def setInput(lat, lon, time):
+        global input_data
+        input_data["coordinates"] = [lat, lon]
+        input_data["timestamp"] = time
+
+    # = Data =
+    data = {
+        "location": "",
+        "wind": [[0, "N"], [0, "WN"], ],
+        "aqi": {
+            "pm2.5": 0,
+            "pm5.0": 0,
+            
+        },
+        "weather-forecast": ["", "", "", "", "", "", ""],
+        "average-humidity": 0,
+        "air": {
+            "no2": 0,
+            "so2": 0,
+            "co": 0,
+            "o3": 0,
+
+        },
+        "space-objects": [],
+        "magnetosphere": 0,
+        "kp-index": 0,
+        "sun-position": [],
+        "moon-position": [],
+        "xray": 0,
+        "surface": {
+            "height": 0,
+            "peak-delta": 0,
+            "degree": 0
+        }
+    }
+
+    # Main Fetch
+    async def fetchAllData():
         async with httpx.AsyncClient(timeout=10.0) as client:
             tasks = [
             ]

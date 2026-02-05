@@ -1,7 +1,7 @@
 # === Dependences ===
 # = Libs =
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QStackedWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget
 from PySide6.QtWidgets import QPushButton
 # = Modules =
 import modules.parser as parser     # Data Parser
@@ -23,7 +23,7 @@ MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 
 # === Objects & Variables ===
 data_fetcher = parser.DataControlManager()
-ai = model.AIModel(MODEL_PATH, SYSTEM_ROLE)
+#ai = model.AIModel(MODEL_PATH, SYSTEM_ROLE)
 
 # === App ===
 class MainApp(QMainWindow):
@@ -63,7 +63,9 @@ class MainApp(QMainWindow):
     # --- PAGES ---
     def init_input_page(self):
         page = QWidget()
-        layout = QVBoxLayout(page)
+        layout = QHBoxLayout(page)
+
+        
 
         btn = QPushButton("Analysis")
         btn.setObjectName("mainButton") # ID для стилей

@@ -43,60 +43,41 @@ APIS = {
 }
 
 class DataControlManager:
+    cosmodrome = False;
+
+    def __init__(self):
+        pass
+
     # = Input =
     input_data = {
+        "cosmodrome": "custom",
         "coordinates": [0, 0],
         "timestamp": "2000-01-01T12:00:00Z",
+        "timezone": "UTC+0"
     }
 
-    def setInput(lat, lon, time):
-        global input_data
+    def setInput(cdrome, lat, lon, time, utc_zone):
+        global input_data, cosmodrome
+        cosmodrome = (not cdrome == "custom")
+        input_data["cosmodrome"] = cdrome
         input_data["coordinates"] = [lat, lon]
         input_data["timestamp"] = time
+        input_data["timezone"] = utc_zone
 
     # = Data =
     data = {
         "location": {
-            "name": "",      # From OSM
-            "elevation": 0   # From OpenTopo
+            "name": "",            # From OSM - Country-City
+            "elevation": 0         # From OpenTopo
         },
-        "wind_profile": [
-            # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
-            [10, 5.2, 180, 15], 
-            [100, 7.1, 185, 14],
-            [200, 7.1, 185, 14],
-            [500, 7.1, 185, 14],
-            [1000, 7.1, 185, 14],
-            [2000, 7.1, 185, 14],
-            [3500, 7.1, 185, 14],
-            [5000, 7.1, 185, 14],
-            [10000, 7.1, 185, 14],
-            [20000, 7.1, 185, 14],
-            [25000, 7.1, 185, 14],
-            [30000, 7.1, 185, 14],
-        ],
-        "aqi": {
-            "pm2_5": 0,
-            "pm10": 0,
-            "no2": 0,
-            "so2": 0,
-            "o3": 0,
-            "co": 0
-        },
+        "wind_profile": [],        # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+        "aqi": {"pm2_5": 0, "pm10": 0, "no2": 0, "so2": 0, "o3": 0, "co": 0},
         "weather_summary": {
             "pressure_surface": 0, # Pressure on surface
             "average_humidity": 0, # Humidity in lower atmosphere
             "cloud_cover": 0,      # In % (Critical for optical tracking)
             "visibility": 0,       # In meters
-            "forecast_7d": [
-                "Sunny",
-                "Cloudy",
-                "Rainy",
-                "Snowy",
-                "Cloudy",
-                "Sunny",
-                "Sunny"
-            ]
+            "forecast_7d": []      # Forecast on 7 days (Week)
         },
         "space_environment": {
             "kp_index": 0,         # From NASA (0-9)
@@ -104,7 +85,7 @@ class DataControlManager:
             "mag_declination": 0,  # From WMM (Degrees)
             "sun_pos": [0, 0],     # [Azimuth, Elevation]
             "moon_pos": [0, 0],    # [Azimuth, Elevation]
-            "objects_in_radius": [] # List of TLE/Debris from Space-Track
+            "objects": []          # List of TLE/Debris from Space-Track
         },
         "surface": {
             "height_msl": 0,

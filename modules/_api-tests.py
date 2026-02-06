@@ -12,7 +12,7 @@ import geomag
 # - Constants & Defines -
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
-FORECAST_WINDOW = 7
+FORECAST_WINDOW = 14
 GROUND_CHECK_RADIUS = 50
 SPACE_CHECK_RADIUS = 250
 # - Keys -
@@ -45,41 +45,41 @@ APIS = {
 
 input_data = {
         "cosmodrome": "custom",
-        "coordinates": [45.964, 63.305],
-        "timestamp": "2000-01-01T12:00:00Z",
+        "coordinates": [43.4224, 77.0062],
+        "timestamp": "2026-02-16T12:00:00Z",
         "timezone": "UTC+0"
     }
 
 # = Data =
 data = {
         "location": {
-            "name": "",            # From OSM - Country-City
+            "name": "-",            # From OSM - Country-City
         },
         "wind_profile": [],        # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
-        "aqi": {"pm2_5": 0, "pm10": 0, "no2": 0, "so2": 0, "o3": 0, "co": 0},
+        "aqi": {"pm2_5": None, "pm10": None, "no2": None, "so2": None, "o3": None, "co": None},
         "weather_summary": {
-            "pressure_surface": 0, # Pressure on surface
-            "average_humidity": 0, # Humidity in lower atmosphere
-            "cloud_cover": 0,      # In % (Critical for optical tracking)
-            "visibility": 0,       # In meters
+            "pressure_surface": None, # Pressure on surface
+            "average_humidity": None, # Humidity in lower atmosphere
+            "cloud_cover": None,      # In % (Critical for optical tracking)
+            "visibility": None,       # In meters
             "forecast_7d": []      # Forecast on 7 days (Week)
         },
         "space_environment": {
-            "kp_index": 0,         # From NASA (0-9)
-            "xray_flux": 0,        # From NASA (Solar flares)
-            "mag_declination": 0,  # From WMM (Degrees)
+            "kp_index": None,         # From NASA (0-9)
+            "xray_flux": None,        # From NASA (Solar flares)
+            "mag_declination": None,  # From WMM (Degrees)
             "sun_pos": [0, 0],     # [Azimuth, Elevation]
             "moon_pos": [0, 0],    # [Azimuth, Elevation]
             "objects": []          # List of TLE/Debris from Space-Track
         },
         "surface": {
-            "height_msl": 0,
-            "slope_degree": 0,     # Surface flatness
-            "terrain_type": ""     # Soil/Rock/Water
+            "height_msl": None,
+            "slope_degree": None,     # Surface flatness
+            "terrain_type": "-"     # Soil/Rock/Water
         },
         "aviation": {
             "notams": [],          # Active warnings
-            "airspace_status": ""  # Open/Closed
+            "airspace_status": "-"  # Open/Closed
         }
 }
 
@@ -212,7 +212,7 @@ async def parse_meteo(): # ===================== PARSING OPEN-METEO - DATA: [Win
         "forecast_days": 7
     }
 
-    # Маппинг давления в примерную высоту (метры) для wind_profile
+    # Meters-Pressure Mapping
     pressure_map = {
         "1000hPa": 100, "925hPa": 750, "850hPa": 1500, "700hPa": 3000,
         "500hPa": 5500, "300hPa": 9000, "250hPa": 10500, "100hPa": 16000,
@@ -259,9 +259,110 @@ async def parse_meteo(): # ===================== PARSING OPEN-METEO - DATA: [Win
         except Exception as e:
             print(f"[!] Connection Error: {e}")
 
+async def parse_waqi(): # ===================== PARSING WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ==================
+    lat, lon = input_data["coordinates"]
+    token = WAQI_TOKEN
+    
+    url = f"https://api.waqi.info/feed/geo:{lat};{lon}/"
+    params = {"token": token}
+
+    async with httpx.AsyncClient() as client:
+        try:
+            print(f"[*] Requesting Air Quality for: {lat}, {lon}...")
+            response = await client.get(url, params=params)
+            
+            if response.status_code == 200:
+                res = response.json()
+                if res.get("status") == "ok":
+                    iaqi = res["data"].get("iaqi", {})
+                    
+                    data["aqi"]["pm2_5"] = iaqi.get("pm25", {}).get("v", None)
+                    data["aqi"]["pm10"] = iaqi.get("pm10", {}).get("v", None)
+                    data["aqi"]["no2"] = iaqi.get("no2", {}).get("v", None)
+                    data["aqi"]["so2"] = iaqi.get("so2", {}).get("v", None)
+                    data["aqi"]["o3"] = iaqi.get("o3", {}).get("v", None)
+                    data["aqi"]["co"] = iaqi.get("co", {}).get("v", None)
+                    
+                    print(f"[+] Success! AQI data updated. PM2.5: {data['aqi']['pm2_5']}")
+                else:
+                    print(f"[!] WAQI Error: {res.get('data')}")
+            else:
+                print(f"[!] API Error: {response.status_code}")
+                
+        except Exception as e:
+            print(f"[!] Connection Error: {e}")
+
+async def parse_nasa(): # ===================== PARSING NASA DONKI - DATA: [Space: kp_index, xray_flux] ==================
+    url_gst = "https://api.nasa.gov/DONKI/GST" # Geomagnetic Storms
+    url_flr = "https://api.nasa.gov/DONKI/FLR" # Solar Flares
+    
+    params = {"api_key": NASA_KEY}
+
+    async with httpx.AsyncClient() as client:
+        try:
+            print("[*] Requesting NASA Space Weather...")
+
+            gst_resp = await client.get(url_gst, params=params)
+            flr_resp = await client.get(url_flr, params=params)
+            
+            # Kp-index
+            if gst_resp.status_code == 200:
+                gst_data = gst_resp.json()
+                if gst_data:
+                    # Last storm's max Kp-index (0 if no storms)
+                    last_storm = gst_data[-1]
+                    all_kp = [all_items.get('kpIndex', 0) for all_items in last_storm.get('allKpIndex', [])]
+                    data["space_environment"]["kp_index"] = max(all_kp) if all_kp else 0
+            
+            # X-ray Flux (B, C, M, X)
+            if flr_resp.status_code == 200:
+                flr_data = flr_resp.json()
+                if flr_data:
+                    # Last flare class (0 if no flares)
+                    last_flare = flr_data[-1].get('classType', '0')
+                    data["space_environment"]["xray_flux"] = last_flare
+
+            print(f"[+] NASA Data: Kp={data['space_environment']['kp_index']}, Flare={data['space_environment']['xray_flux']}")
+                
+        except Exception as e:
+            print(f"[!] NASA Connection Error: {e}")
+
+async def parse_spacetrack(): # ===================== PARSING SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ==================
+    auth_data = {
+        "identity": SPACETRACK_LOGIN,
+        "password": SPACETRACK_PASSW
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            print("[*] Authenticating with Space-Track...")
+            auth_resp = await client.post(APIS["SPACETRACK_AUTH"], data=auth_data)
+            
+            if auth_resp.status_code == 200 and "set-cookie" in auth_resp.headers:
+                print("[*] Authentication successful. Fetching TLE data...")
+                cookies = auth_resp.cookies
+                tle_resp = await client.get(APIS["SPACETRACK_QUERY"], cookies=cookies)
+                
+                if tle_resp.status_code == 200:
+                    tle_data = tle_resp.json()
+                    data["space_environment"]["objects"] = tle_data
+                    print(f"[+] Retrieved {len(tle_data)} space objects from Space-Track.")
+                else:
+                    print(f"[!] TLE API Error: {tle_resp.status_code}")
+            else:
+                print(f"[!] Authentication Failed: {auth_resp.status_code}")
+                
+        except Exception as e:
+            print(f"[!] Space-Track Connection Error: {e}")
+
+print("=== Starting API Tests ===")
+
 asyncio.run(parse_osm())
 asyncio.run(parse_opentopo())
 asyncio.run(parse_meteo())
+asyncio.run(parse_waqi())
+asyncio.run(parse_nasa())
+asyncio.run(parse_spacetrack())
 
 print("\nFinal Data Object:")
 print(data)

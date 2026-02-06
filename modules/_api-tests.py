@@ -2,6 +2,7 @@
 import asyncio
 import httpx
 import os
+import math
 # - Dotenv -
 from dotenv import load_dotenv
 load_dotenv()
@@ -32,7 +33,7 @@ APIS = {
     "OPENWEATHER": "https://api.openweathermap.org/data/2.5/weather",
     # OpenMeteo: High altitude wind, temp and air density (Pressure levels)
     "METEO": "https://api.open-meteo.com/v1/forecast",
-    # OpenStreetMap: Reverse geocoding (City/Country name)
+    # OpenStreetMap: RevQVBoxLayout,erse geocoding (City/Country name)
     "OSM": "https://nominatim.openstreetmap.org/reverse",
     # OpenTopo: Surface elevation (SRTM 30m model)
     "OPENTOPO": "https://api.opentopodata.org/v1/srtm30m",
@@ -127,31 +128,131 @@ async def parse_osm(): # ======================= PARSING OSM - DATA: [Location: 
         except Exception as e:
             print(f"[!] Connection Error: {e}")
 
-async def parse_opentopo(): # ===================== PARSING OPENTOPO - DATA: [Location: elevation] ==================
+async def parse_opentopo(): 
     lat, lon = input_data["coordinates"]
+    delta = 50 * 0.00001
     
+    # 5 Dots
+    locs = [
+        f"{lat},{lon}",           # Center [0]
+        f"{lat + delta},{lon}",   # North  [1]
+        f"{lat - delta},{lon}",   # South  [2]
+        f"{lat},{lon + delta}",   # East   [3]
+        f"{lat},{lon - delta}"    # West   [4]
+    ]
+
     params = {
-        "locations": f"{lat},{lon}"
+        "locations": "|".join(locs)
     }
 
     async with httpx.AsyncClient() as client:
         try:
-            print(f"[*] Requesting Elevation for: {lat}, {lon}...")
+            print(f"[*] Requesting Elevation & Slope for: {lat}, {lon}...")
             response = await client.get(APIS["OPENTOPO"], params=params)
             
             if response.status_code == 200:
-                res = response.json()
+                res = response.json().get("results", [])
                 
-                if res.get("results"):
-                    elevation = res["results"][0].get("elevation", 0)
-                    
-                    elevation = round(elevation, 1)
+                if len(res) == 5:
+                    # Height values
+                    h_c = res[0]['elevation'] # C
+                    h_n = res[1]['elevation'] # N
+                    h_s = res[2]['elevation'] # S
+                    h_e = res[3]['elevation'] # E
+                    h_w = res[4]['elevation'] # W
 
-                    data["surface"]["height_msl"] = elevation
+                    # Calculate gradients
+                    dist = 111.0 # 2 * delta (m)
+                    dz_dx = (h_e - h_w) / dist
+                    dz_dy = (h_n - h_s) / dist
+
+                    # Slope in degrees
+                    slope = math.degrees(math.atan(math.sqrt(dz_dx**2 + dz_dy**2)))
+
+                    data["surface"]["height_msl"] = round(h_c, 1)
+                    data["surface"]["slope_degree"] = round(slope, 2)
                     
-                    print(f"[+] Success! Elevation: {elevation} meters")
+                    # terrain-type Logic
+                    if h_c < 0:
+                        data["surface"]["terrain_type"] = "Water / Sea Level"
+                    elif slope > 13:
+                        data["surface"]["terrain_type"] = "Mountainous / Rough"
+                    else:
+                        data["surface"]["terrain_type"] = "Flat Plain"
+
+                    print(f"[+] Elevation: {h_c}m, Slope: {data['surface']['slope_degree']}°")
                 else:
-                    print("[!] No elevation results found.")
+                    print("[!] Not enough points for slope calculation.")
+            else:
+                print(f"[!] API Error: {response.status_code}")
+                
+        except Exception as e:
+            print(f"[!] Connection Error: {e}")
+
+async def parse_meteo(): # ===================== PARSING OPEN-METEO - DATA: [Wind Profile, Summary, Forecast] ==================
+    lat, lon = input_data["coordinates"]
+    
+    # 1. Формируем список параметров для всех уровней давления
+    # Нам нужны: temp, windspeed, winddirection для каждого уровня из PRESSURE_LEVELS
+    hourly_params = [
+        "surface_pressure", "relativehumidity_2m", "cloudcover", "visibility"
+    ]
+    for p in PRESSURE_LEVELS:
+        hourly_params.append(f"temperature_{p}")
+        hourly_params.append(f"windspeed_{p}")
+        hourly_params.append(f"winddirection_{p}")
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": hourly_params,
+        "daily": "weathercode",
+        "wind_speed_unit": "ms",
+        "timezone": "UTC",
+        "forecast_days": 7
+    }
+
+    # Маппинг давления в примерную высоту (метры) для wind_profile
+    pressure_map = {
+        "1000hPa": 100, "925hPa": 750, "850hPa": 1500, "700hPa": 3000,
+        "500hPa": 5500, "300hPa": 9000, "250hPa": 10500, "100hPa": 16000,
+        "50hPa": 20000, "10hPa": 31000
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            print(f"[*] Requesting Atmospheric Data for: {lat}, {lon}...")
+            response = await client.get(APIS["METEO"], params=params)
+            
+            if response.status_code == 200:
+                res = response.json()
+                h = res.get("hourly", {})
+                d = res.get("daily", {})
+
+                # --- Weather Summary ---
+                data["weather_summary"]["pressure_surface"] = h.get("surface_pressure", [0])[0]
+                data["weather_summary"]["average_humidity"] = h.get("relativehumidity_2m", [0])[0]
+                data["weather_summary"]["cloud_cover"] = h.get("cloudcover", [0])[0]
+                data["weather_summary"]["visibility"] = h.get("visibility", [0])[0]
+
+                # --- Forecast 7d ---
+                # Weathercode
+                data["weather_summary"]["forecast_7d"] = d.get("weathercode", [])
+
+                # --- Wind Profile ---
+                new_profile = []
+                for p in PRESSURE_LEVELS:
+                    alt = pressure_map.get(p, 0)
+                    speed = h.get(f"windspeed_{p}", [0])[0]
+                    direction = h.get(f"winddirection_{p}", [0])[0]
+                    temp = h.get(f"temperature_{p}", [0])[0]
+                    
+                    # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+                    new_profile.append([alt, speed, direction, temp])
+                
+                data["wind_profile"] = new_profile
+                
+                print(f"[+] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
             else:
                 print(f"[!] API Error: {response.status_code}")
                 
@@ -160,5 +261,7 @@ async def parse_opentopo(): # ===================== PARSING OPENTOPO - DATA: [Lo
 
 asyncio.run(parse_osm())
 asyncio.run(parse_opentopo())
+asyncio.run(parse_meteo())
+
 print("\nFinal Data Object:")
 print(data)

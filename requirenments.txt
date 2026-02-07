@@ -8,6 +8,7 @@ playwright
 # Data Dependences
 geomag
 skyfield
+ephem
 
 # AI Engine
 llama-cpp-python>=0.2.79

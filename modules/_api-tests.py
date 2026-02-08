@@ -1,24 +1,25 @@
 # - Tools -
-import asyncio
-import httpx
 import os
 import math
+import json
 import datetime
 from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
+import asyncio
+import httpx
 # - Dotenv -
 from dotenv import load_dotenv
 load_dotenv()
 # - Parse Dependences -
 import geomag
 import ephem
+import skyfield.api as sf
 
 # - Constants & Defines -
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
-YEAR_ARCHIVE = 5
-GROUND_CHECK_RADIUS = 50
-SPACE_CHECK_RADIUS = 250
+HISTORY_WINDOW_YEARS = 5
+SPACETRACK_LIMIT = 10
 # - Keys -
 NASA_KEY = os.getenv("NASA_API_KEY")
 SPACETRACK_LOGIN = os.getenv("SPACETRACK_USER")
@@ -26,11 +27,11 @@ SPACETRACK_PASSW = os.getenv("SPACETRACK_PASSWORD")
 NOTAM_KEY = os.getenv("FAA_NOTAM_KEY")
 OPENWEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 WAQI_TOKEN = os.getenv("WAQI_TOKEN")
+AVWX_TOKEN = os.getenv("AVWX_TOKEN")
 # - Refers -
-SPACETRACK_LIMIT=10
 APIS = {
     # NASA: Solar flares and Radiation (Space Weather)
-    "NASA_DONKI": "https://api.nasa.gov/DONKI/notifications",
+    "NASA_DONKI": "https://api.nasa.gov/DONKI/",
     # Space-Track: TLE Data for debris and satellites
     "SPACETRACK_AUTH": "https://www.space-track.org/ajaxauth/login",
     "SPACETRACK_QUERY": f"https://www.space-track.org/basicspacedata/query/class/gp/EPOCH/%3Enow-30/MEAN_MOTION/%3E11.25/format/json/limit/{SPACETRACK_LIMIT}",
@@ -45,14 +46,15 @@ APIS = {
     "OPENTOPO": "https://api.opentopodata.org/v1/srtm30m",
     # WAQI: Ground air quality sensors (Chemical composition)
     "WAQI": "https://api.waqi.info/feed/geo:",
-    # FAA: NOTAMs (Airspace closures)
-    "NOTAM": "https://notams.aim.faa.gov/notamSearch/search"
+    # NOTAMs & Flights
+    "AVIATION_TRAFFIC": "https://opensky-network.org/api/states/all",
+    "AVIATION_NOTAM": "https://avwx.rest/api/notam/"
 }
 
 input_data = {
         "cosmodrome": "custom",
         "coordinates": [43.4224, 77.0062],
-        "timestamp": "2026-02-16T12:00:00Z",
+        "timestamp": "2026-02-09T12:00:00Z",
         "timezone": "UTC+5"
  }
 
@@ -69,23 +71,26 @@ data = {
             "average_humidity": None, # Humidity in lower atmosphere
             "cloud_cover": None,      # In % (Critical for optical tracking)
             "visibility": None,       # In meters
-            "forecast_7d": []         # Forecast on 7 days (Week)
+            "forecast_7d": [],        # Forecast on 7 days (Week)
+            "weather_normal": []      # Weather normal for YEAR_ARCHIVE years
         },
         "space_environment": {
             "kp_index": None,         # From NASA (0-9)
             "xray_flux": None,        # From NASA (Solar flares)
+
             "mag_declination": None,  # From WMM (Degrees)
             "sun_pos": [],            # [Azimuth, Elevation]
             "moon_pos": [],           # [Azimuth, Elevation]
             "objects": []             # List of TLE/Debris from Space-Track
         },
         "surface": {
-            "height_msl": None,
+            "height_msl": None,       # Height
             "slope_degree": None,     # Surface flatness
             "terrain_type": "-"       # Soil/Rock/Water
         },
         "aviation": {
             "notams": [],             # Active warnings
+            "shedules": [],           # Fights
             "airspace_status": "-"    # Open/Closed
         }
 }
@@ -106,9 +111,8 @@ def utc_time(input_time, timezone):
 
 # ================================= OPERATIONAL FUNCTIONS (<14 DAYS) ==============================================
 
-async def parse_meteo_op(time): # ------------------- OPEN-METEO - DATA: [Wind Profile, Summary, Forecast] -------------------
-    lat, lon = input_data["coordinates"]
-    
+async def parse_meteo_op(lat, lon): # ------------------- OPEN-METEO - DATA: [Wind Profile, Summary, Forecast] -------------------
+    forecast = 7
     hourly_params = [
         "surface_pressure", "relativehumidity_2m", "cloudcover", "visibility"
     ]
@@ -124,10 +128,10 @@ async def parse_meteo_op(time): # ------------------- OPEN-METEO - DATA: [Wind P
         "daily": "weathercode",
         "wind_speed_unit": "ms",
         "timezone": "UTC",
-        "forecast_days": 7
+        "forecast_days": forecast
     }
 
-    # Meters-Pressure Mapping
+    # Meters-Pressure Mapping [Pa-m]
     pressure_map = {
         "1000hPa": 100, "925hPa": 750, "850hPa": 1500, "700hPa": 3000,
         "500hPa": 5500, "300hPa": 9000, "250hPa": 10500, "100hPa": 16000,
@@ -150,8 +154,7 @@ async def parse_meteo_op(time): # ------------------- OPEN-METEO - DATA: [Wind P
                 data["weather_summary"]["cloud_cover"] = h.get("cloudcover", [0])[0]
                 data["weather_summary"]["visibility"] = h.get("visibility", [0])[0]
 
-                # --- Forecast 7d ---
-                # Weathercode
+                # --- Forecast 7d (Weathercode) ---
                 data["weather_summary"]["forecast_7d"] = d.get("weathercode", [])
 
                 # --- Wind Profile ---
@@ -167,19 +170,16 @@ async def parse_meteo_op(time): # ------------------- OPEN-METEO - DATA: [Wind P
                 
                 data["wind_profile"] = new_profile
                 
-                print(f"[+] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
+                print(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
             else:
                 print(f"[!] API Error: {response.status_code}")
                 
         except Exception as e:
-            print(f"[!] Connection Error: {e}")
+            print(f"[X] Connection Error: {e}")
 
-async def parse_waqi_op(): # ------------------- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] -------------------
-    lat, lon = input_data["coordinates"]
-    token = WAQI_TOKEN
-    
-    url = f"https://api.waqi.info/feed/geo:{lat};{lon}/"
-    params = {"token": token}
+async def parse_waqi_op(lat, lon): # ------------------- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] -------------------
+    url = APIS["WAQI"] + f"{lat};{lon}/"
+    params = {"token": WAQI_TOKEN}
 
     async with httpx.AsyncClient() as client:
         try:
@@ -198,18 +198,18 @@ async def parse_waqi_op(): # ------------------- WAQI - DATA: [AQI: pm2_5, pm10,
                     data["aqi"]["o3"] = iaqi.get("o3", {}).get("v", None)
                     data["aqi"]["co"] = iaqi.get("co", {}).get("v", None)
                     
-                    print(f"[+] Success! AQI data updated. PM2.5: {data['aqi']['pm2_5']}")
+                    print(f"[V] Success! AQI data updated.")
                 else:
                     print(f"[!] WAQI Error: {res.get('data')}")
             else:
                 print(f"[!] API Error: {response.status_code}")
                 
         except Exception as e:
-            print(f"[!] Connection Error: {e}")
+            print(f"[X] Connection Error: {e}")
 
-async def parse_nasa_op(): # ------------------- NASA DONKI - DATA: [Space: kp_index, xray_flux] -------------------
-    url_gst = "https://api.nasa.gov/DONKI/GST" # Geomagnetic Storms
-    url_flr = "https://api.nasa.gov/DONKI/FLR" # Solar Flares
+async def parse_donki(): # ------------------- NASA DONKI - DATA: [Space: kp_index, xray_flux] -------------------
+    url_gst = APIS["NASA_DONKI"] + "GST" # Geomagnetic Storms
+    url_flr = APIS["NASA_DONKI"] + "FLR" # Solar Flares
     
     params = {"api_key": NASA_KEY}
 
@@ -233,16 +233,16 @@ async def parse_nasa_op(): # ------------------- NASA DONKI - DATA: [Space: kp_i
             if flr_resp.status_code == 200:
                 flr_data = flr_resp.json()
                 if flr_data:
-                    # Last flare class (0 if no flares)
-                    last_flare = flr_data[-1].get('classType', '0')
+                    # Last flare class (- if no flares)
+                    last_flare = flr_data[-1].get('classType', '-')
                     data["space_environment"]["xray_flux"] = last_flare
 
-            print(f"[+] NASA Data: Kp={data['space_environment']['kp_index']}, Flare={data['space_environment']['xray_flux']}")
+            print(f"[V] Success! NASA Data updated.")
                 
         except Exception as e:
-            print(f"[!] NASA Connection Error: {e}")
+            print(f"[X] NASA Connection Error: {e}")
 
-async def parse_spacetrack_op(): # ------------------- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] -------------------
+async def get_spacetrack_op(): # ------------------- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] -------------------
     auth_data = {
         "identity": SPACETRACK_LOGIN,
         "password": SPACETRACK_PASSW
@@ -254,26 +254,122 @@ async def parse_spacetrack_op(): # ------------------- SPACE-TRACK - DATA: [Spac
             auth_resp = await client.post(APIS["SPACETRACK_AUTH"], data=auth_data)
             
             if auth_resp.status_code == 200 and "set-cookie" in auth_resp.headers:
-                print("[*] Authentication successful. Fetching TLE data...")
+                print("[+] Authentication successful. Fetching TLE data...")
                 cookies = auth_resp.cookies
                 tle_resp = await client.get(APIS["SPACETRACK_QUERY"], cookies=cookies)
                 
                 if tle_resp.status_code == 200:
                     tle_data = tle_resp.json()
-                    data["space_environment"]["objects"] = tle_data
-                    print(f"[+] Retrieved {len(tle_data)} space objects from Space-Track.")
+                    print(f"[V] Reсieved {len(tle_data)} space objects from Space-Track.")
+                    return tle_data
                 else:
                     print(f"[!] TLE API Error: {tle_resp.status_code}")
+                    return []
             else:
-                print(f"[!] Authentication Failed: {auth_resp.status_code}")
+                print(f"[-] Authentication Failed: {auth_resp.status_code}")
+                return []
                 
         except Exception as e:
-            print(f"[!] Space-Track Connection Error: {e}")
+            print(f"[X] Space-Track Connection Error: {e}")
+            return []
+
+async def get_nearest_icao(lat:float, lon:float):
+    url = f"https://avwx.rest/api/station/near/{lat},{lon}"
+    headers = {"Authorization": f"BEARER {AVWX_TOKEN}"}
+    
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                result = resp.json()
+                if isinstance(result, list) and len(result) > 0:
+                    icao = result[0].get('station', {}).get('icao')
+                    if icao:
+                        return icao
+                print(f"[-] No station found for coords: {lat}, {lon}")
+            else:
+                print(f"[!] Station lookup API error: {resp.status_code}")
+        except Exception as e:
+            print(f"[X] Station lookup connection failed: {e}")
+    
+    return None
+async def parse_notams(lat, lon):
+    pass
+
+async def parse_flights(lat, lon, radius_km=200):
+    lat_delta = radius_km / 111.1
+    # Longitude degree length: 111.1 * cos(latitude)
+    lon_delta = radius_km / (111.1 * math.cos(math.radians(lat)))
+
+    # Define Bounding Box
+    params = {
+        "lamin": lat - lat_delta,
+        "lamax": lat + lat_delta,
+        "lomin": lon - lon_delta,
+        "lomax": lon + lon_delta
+    }
+
+    print("[*] Recieving flights...")
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(APIS["AVIATION_TRAFFIC"], params=params, timeout=10.0)
+            
+            if resp.status_code == 200:
+                states = resp.json().get("states") or []
+                flights = []
+                
+                for s in states:
+                    flights.append({
+                        "callsign": s[1].strip() or "N/A", # Aircraft ID
+                        "altitude_m": s[7],                # Geometric Altitude (meters)
+                        "velocity_ms": s[9],               # Ground Speed (m/s)
+                        "heading": s[10],                  # Track angle (degrees)
+                        "on_ground": s[8]                  # True if taxiing/parked
+                    })
+                
+                data["aviation"]["shedules"] = flights
+                print(f"[V] Success! Flight shedules updated.")
+        except Exception as e: print(f"[X] Flights API Error: {e}")
 
 # ================================= STRATEGIC FUNCTIONS (>14 DAYS) ==============================================
 
-async def get_weather_normal(target_time): # ------------------- STRATEG (OPEN-METEO) - DATA: [Wind Profile, Summary, Forecast] -------------------
-    pass
+async def get_weather_normal(lat, lon, target_time):
+    all_history = []
+
+    print(f"[*] Calculating weather normal...")
+    async with httpx.AsyncClient() as client:
+        for i in range(1, HISTORY_WINDOW_YEARS + 1):
+            past_year = target_time.year - i
+            # 3-Day Bias from target data
+            start_d = (target_time - timedelta(days=1)).replace(year=past_year).strftime("%Y-%m-%d")
+            end_d = (target_time + timedelta(days=1)).replace(year=past_year).strftime("%Y-%m-%d")
+            
+            url = (
+                f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}"
+                f"&start_date={start_d}&end_date={end_d}"
+                f"&hourly=temperature_2m,surface_pressure,wind_speed_10m,cloud_cover"
+            )
+            
+            try:
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    h = resp.json().get("hourly", {})
+                    all_history.append(h)
+            except Exception as e:
+                print(f"[!] Archive fetch error for year {past_year}: {e}")
+
+    # Average
+    if all_history:
+        avg_temp = sum([sum(y['temperature_2m'])/len(y['temperature_2m']) for y in all_history]) / len(all_history)
+        avg_clouds = sum([sum(y['cloud_cover'])/len(y['cloud_cover']) for y in all_history]) / len(all_history)
+        avg_press = sum([sum(y['surface_pressure'])/len(y['surface_pressure']) for y in all_history]) / len(all_history)
+
+        data["weather_summary"]["weather_normal"] = {
+            "temp_norm": round(avg_temp, 1),
+            "cloud_norm": round(avg_clouds, 0),
+            "pressure_norm": round(avg_press, 1)
+        }
+        print(f"[V] Weather normal calculated based on {HISTORY_WINDOW_YEARS} years of history.")
 
 async def get_aqi_trends(target_time):
     date_str = target_time.strftime("%Y-%m-%d")
@@ -282,13 +378,13 @@ async def get_aqi_trends(target_time):
     lat, lon = input_data['coordinates']
     fetch_address = (
         f"{APIS['AQI_TRENDS']}latitude={lat}&longitude={lon}"
-        f"&hourly=pm2_5,pm10,carbon_monoxide,ozone"
+        f"&hourly=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide,sulphur_dioxide"
         f"&start_date={date_str}&end_date={date_str}"
     )
 
     async with httpx.AsyncClient() as client:
         try:
-            print(f"[*] Fetching AQI Forecast for {date_str}...")
+            print(f">[*] Fetching AQI Forecast for {date_str}...")
             resp = await client.get(fetch_address)
             
             if resp.status_code == 200:
@@ -299,27 +395,70 @@ async def get_aqi_trends(target_time):
                 trend = {
                     "pm2_5": h_data.get("pm2_5", [])[target_hour],
                     "pm10": h_data.get("pm10", [])[target_hour],
-                    "no2": None,
-                    "so2": None,
+                    "no2": h_data.get("nitrogen_dioxide", [])[target_hour],
+                    "so2": h_data.get("sulphur_dioxide", [])[target_hour],
                     "o3": h_data.get("ozone", [])[target_hour],
                     "co": h_data.get("carbon_monoxide", [])[target_hour]
                 }
-                print(f"[+] AQI Forecast retrieved for {target_hour}:00 UTC.")
+                print(f">[V] AQI Forecast retrieved for {date_str}.")
 
                 return trend
             else:
-                print(f"[!] AQI Trends API Error: {resp.status_code}")
+                print(f">[!] AQI Trends API Error: {resp.status_code}")
                 return []
                 
         except Exception as e:
-            print(f"[!] AQI Trends Connection Error: {e}")
+            print(f">[X] AQI Trends Connection Error: {e}")
             return []
+
+async def predict_donki(target_time):
+    pass
+
+async def process_space_objects(lat, lon, target_time, objects):
+    ts = sf.load.timescale()
+    t = ts.from_datetime(target_time.replace(tzinfo=dt_tz.utc))
+
+    observer = sf.wgs84.latlon(lat, lon)
+    
+    print("[*] Processing TLE data...")
+    processed = []
+    for obj in objects:
+        try:
+            line1 = obj['TLE_LINE1']
+            line2 = obj['TLE_LINE2']
+            satellite = sf.EarthSatellite(line1, line2, obj['OBJECT_NAME'], ts)
+            
+            # Position Projection
+            difference = satellite - observer
+            topocentric = difference.at(t)
+            
+            # Azimuth, Alt & Distance
+            alt, az, distance = topocentric.altaz()
+            az_val, alt_val, dist_val = float(az.degrees), float(alt.degrees), float(distance.km)
+            
+            processed.append({
+                    "name": str(obj['OBJECT_NAME']),
+                    "norad_id": str(obj['NORAD_CAT_ID']),
+                    "type": str(obj['OBJECT_TYPE']),
+                    "rcs": str(obj['RCS_SIZE']),
+                    "position_prediction": {
+                        "azimuth": round(az_val, 2),
+                        "elevation": round(alt_val, 2),
+                        "range_km": round(dist_val, 2)
+                    },
+                    "is_visible": alt_val > 0 # Can we see it physically
+                })
+            print(">[V] TLE Object processed")
+        except Exception as e:
+            print(f">[!] TLE Object process error: {e}")
+            continue
+
+    processed.sort(key=lambda x: x['position_prediction']['range_km']) # Sort by nearest
+    data["space_environment"]["objects"] = processed
 
 # ================================= FUNCTIONS WITHOUT TIME DEPENDENCE ==============================================
 
-async def parse_osm_op(): # ------------------- OSM - DATA: [Location: Name] -------------------
-    lat, lon = input_data["coordinates"]
-    
+async def parse_osm(lat, lon): # ------------------- OSM - DATA: [Location: Name] -------------------
     params = {
         "lat": lat,
         "lon": lon,
@@ -327,9 +466,8 @@ async def parse_osm_op(): # ------------------- OSM - DATA: [Location: Name] ---
         "addressdetails": 1,
         "accept-language": "en"
     }
-    
     headers = {
-        "User-Agent": "AeroSpaceMissionControl/1.0 (contact: your@email.com)"
+        "User-Agent": "AerooSpaceCompetitionLEASFromOrigin/1.0"
     }
 
     async with httpx.AsyncClient() as client:
@@ -351,16 +489,15 @@ async def parse_osm_op(): # ------------------- OSM - DATA: [Location: Name] ---
                 
                 data["location"]["name"] = f"{country}-{city}"
                 
-                print(f"[+] Success! Location identified as: {data['location']['name']}")
+                print(f"[V] Success! Location identified.")
             else:
                 print(f"[!] API Error: {response.status_code}")
                 
         except Exception as e:
-            print(f"[!] Connection Error: {e}")
+            print(f"[X] Connection Error: {e}")
 
-async def parse_opentopo():  # -------------------  OSM - DATA: [Surface: *] -------------------
-    lat, lon = input_data["coordinates"]
-    delta = 50 * 0.00001
+async def parse_opentopo(lat, lon, m=55):  # -------------------  OSM - DATA: [Surface: *] -------------------
+    delta = m * 0.00001
     
     # 5 Dots
     locs = [
@@ -392,37 +529,31 @@ async def parse_opentopo():  # -------------------  OSM - DATA: [Surface: *] ---
                     h_w = res[4]['elevation'] # W
 
                     # Calculate gradients
-                    dist = 111.0 # 2 * delta (m)
+                    dist = m * 2 # 2 * delta (m)
                     dz_dx = (h_e - h_w) / dist
                     dz_dy = (h_n - h_s) / dist
 
                     # Slope in degrees
                     slope = math.degrees(math.atan(math.sqrt(dz_dx**2 + dz_dy**2)))
 
-                    data["surface"]["height_msl"] = round(h_c, 1)
+                    data["surface"]["height_msl"] = round(h_c, 2)
                     data["surface"]["slope_degree"] = round(slope, 2)
                     
                     # terrain-type Logic
-                    if h_c < 0:
-                        data["surface"]["terrain_type"] = "Water / Sea Level"
-                    elif slope > 13:
-                        data["surface"]["terrain_type"] = "Mountainous / Rough"
-                    else:
-                        data["surface"]["terrain_type"] = "Flat Plain"
+                    if h_c < 0: data["surface"]["terrain_type"] = "Water / Sea Level"
+                    elif slope > 13: data["surface"]["terrain_type"] = "Mountainous / Rough"
+                    else: data["surface"]["terrain_type"] = "Flat Plain"
 
-                    print(f"[+] Elevation: {h_c}m, Slope: {data['surface']['slope_degree']}°")
+                    print(f"[V] Success! Surface profile updated.")
                 else:
                     print("[!] Not enough points for slope calculation.")
             else:
                 print(f"[!] API Error: {response.status_code}")
                 
         except Exception as e:
-            print(f"[!] Connection Error: {e}")
+            print(f"[X] Connection Error: {e}")
 
-async def calculate_local(target_utc_time): # ------------------- LOCAL CALCULATING -------------------
-    lat, lon = input_data["coordinates"]
-    alt = data["surface"]["height_msl"]
-    
+async def calculate_local(lat, lon, alt, target_utc_time): # ------------------- LOCAL CALCULATING [Magnetosphere, Sun, Moon] -------------------
     try:
         print(f"[*] Calculating celestial and magnetic data for {target_utc_time}...")
         
@@ -446,50 +577,57 @@ async def calculate_local(target_utc_time): # ------------------- LOCAL CALCULAT
             round(math.degrees(moon.alt), 2)
         ]
 
-        # --- WMM ---
+        # --- WMM (2 Different calculation methods) ---
         try:
             gm = geomag.geomag.GeoMag() 
-            mag = gm.GeoMag(lat, lon, alt * 3.28084, time=target_utc_time.year + target_utc_time.month/12)
+            mag = gm.GeoMag(lat, lon, alt * 3.28084, time=target_utc_time.year + target_utc_time.month/12) # Alt in feet
             dec = mag.dec
-        except:
-            dec = geomag.declination(lat, lon, alt)
+        except: dec = geomag.declination(lat, lon, alt) 
             
         data["space_environment"]["mag_declination"] = round(dec, 2)
 
-        print(f"[+] Local calculations complete. Mag declination: {data['space_environment']['mag_declination']}°")
+        print(f"[V] Local calculations complete.")
         
     except Exception as e:
-        print(f"[!] Calculation Error: {e}")
+        print(f"[X] Calculation Error: {e}")
 
 print("=== Starting API Tests ===")
 
 greenvich_time = utc_time(input_data["timestamp"], input_data["timezone"])
 
 async def parse_all(input_time):
-    time_delta = datetime.now() - input_time
+    lat, lon = input_data["coordinates"]
+    time_delta = input_time - datetime.now(dt_tz.utc)
     # OSM & OpenTopo
-    asyncio.run(parse_osm_op())
-    asyncio.run(parse_opentopo())
+    await parse_osm(lat, lon)
+    await parse_opentopo(lat, lon)
     # OpenMeteo
-    if time_delta <= 14: asyncio.run(parse_meteo_op(input_time))
-    else: asyncio.run(get_weather_normal(input_time))
+    await parse_meteo_op(lat, lon)
+    await get_weather_normal(lat, lon, input_time)
     # WAQI
-    asyncio.run(parse_waqi_op())
-    for i in range(1, YEAR_ARCHIVE + 1): 
+    await parse_waqi_op(lat, lon)
+    print(f"[*] Fetching AQI History for {HISTORY_WINDOW_YEARS} years")
+    for i in range(1, HISTORY_WINDOW_YEARS + 1):
         past_time = input_time - relativedelta(years=i)
-        archive_data = await get_aqi_trends(past_time) 
+        archive_data = await get_aqi_trends(past_time)
+
         if archive_data:
             data["aqi_trends"].append({
                 "date": past_time.strftime("%Y-%m-%d"),
                 "content": archive_data
             })
-    # NASA
-    asyncio.run(parse_nasa_op())
-    #Space Track
-    asyncio.run(parse_spacetrack_op())
-    #Magnetosphere & Sun/Moon
-    asyncio.run(calculate_local(input_time))
+    # NASA X
+    await parse_donki()
+    await predict_donki(input_time)
+    # Space Track
+    tle = await get_spacetrack_op()
+    await process_space_objects(lat, lon, input_time, tle)
+    # Magnetosphere & Sun/Moon
+    await calculate_local(lat, lon, data["surface"]["height_msl"], input_time)
+    # NOTAMs & Flights
+    await parse_notams(lat, lon)
+    await parse_flights(lat, lon)
 
-parse_all(greenvich_time)
+asyncio.run(parse_all(greenvich_time))
 print("\n=== Final Data Object ===")
-print(data)
+print(json.dumps(data, indent=2, ensure_ascii=False)) # Test JSON Debug

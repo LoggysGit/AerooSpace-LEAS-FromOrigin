@@ -13,26 +13,19 @@ class AIModel:
         self.chat_history = [{"role": "system", "content": self.role}]
 
     async def analyze(self, data, prompt):
-        """
-        One-shot analysis of provided data
-        """
-        user_message = f"DATA: {data}\n\nQUESTION: {prompt}" # Formating the request with data and specific user prompt
+        user_message = f"DATA: {data}\n\nPROMPT: {prompt}" # Formating the request with data and specific user prompt
 
         messages = [
             {"role": "system", "content": self.role},
             {"role": "user", "content": user_message}
         ]
         
-        # Running in a thread pool to avoid GUI freezing
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self._generate, messages)
         
         return response
 
     async def ask(self, prompt):
-        """
-        Continuous dialogue
-        """
         self.chat_history.append({"role": "user", "content": prompt}) # Add prompt to history
         
         loop = asyncio.get_event_loop()

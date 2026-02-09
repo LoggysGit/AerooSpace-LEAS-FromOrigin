@@ -54,7 +54,8 @@ APIS = {
 input_data = {
         "cosmodrome": "custom",
         "coordinates": [43.4224, 77.0062],
-        "timestamp": "2026-02-09T12:00:00Z",
+        "target_timestamp": "2026-02-09T12:00:00Z",
+        "request_time": datetime.utcnow().isoformat() + "Z",
         "timezone": "UTC+5"
  }
 
@@ -72,12 +73,12 @@ data = {
             "cloud_cover": None,      # In % (Critical for optical tracking)
             "visibility": None,       # In meters
             "forecast_7d": [],        # Forecast on 7 days (Week)
-            "weather_normal": []      # Weather normal for YEAR_ARCHIVE years
+            "weather_normal": []      # Weather normal for HISTORY_WINDOW_YEARS years
         },
         "space_environment": {
             "kp_index": None,         # From NASA (0-9)
             "xray_flux": None,        # From NASA (Solar flares)
-
+            "donki_trends": [],       # DONKI trendss
             "mag_declination": None,  # From WMM (Degrees)
             "sun_pos": [],            # [Azimuth, Elevation]
             "moon_pos": [],           # [Azimuth, Elevation]
@@ -207,37 +208,40 @@ async def parse_waqi_op(lat, lon): # ------------------- WAQI - DATA: [AQI: pm2_
         except Exception as e:
             print(f"[X] Connection Error: {e}")
 
-async def parse_donki(): # ------------------- NASA DONKI - DATA: [Space: kp_index, xray_flux] -------------------
-    url_gst = APIS["NASA_DONKI"] + "GST" # Geomagnetic Storms
-    url_flr = APIS["NASA_DONKI"] + "FLR" # Solar Flares
-    
-    params = {"api_key": NASA_KEY}
+async def parse_donki():
+    # Yesterday - now
+    now = datetime.now()
+    start_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    params = {
+        "startDate": start_date,
+        "api_key": NASA_KEY
+    }
 
     async with httpx.AsyncClient() as client:
         try:
-            print("[*] Requesting NASA Space Weather...")
-
-            gst_resp = await client.get(url_gst, params=params)
-            flr_resp = await client.get(url_flr, params=params)
+            print("[*] Requesting REAL-TIME NASA Space Weather...")
+            gst_resp = await client.get(APIS["NASA_DONKI"] + "GST", params=params)
+            flr_resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
             
+            data["space_environment"]["kp_index"] = 0
+            data["space_environment"]["xray_flux"] = "A0.0" 
+
             # Kp-index
             if gst_resp.status_code == 200:
                 gst_data = gst_resp.json()
                 if gst_data:
-                    # Last storm's max Kp-index (0 if no storms)
                     last_storm = gst_data[-1]
-                    all_kp = [all_items.get('kpIndex', 0) for all_items in last_storm.get('allKpIndex', [])]
-                    data["space_environment"]["kp_index"] = max(all_kp) if all_kp else 0
+                    all_kp = [item.get('kpIndex', 0) for item in last_storm.get('allKpIndex', [])]
+                    if all_kp:
+                        data["space_environment"]["kp_index"] = all_kp[-1] # Actual
             
-            # X-ray Flux (B, C, M, X)
             if flr_resp.status_code == 200:
                 flr_data = flr_resp.json()
                 if flr_data:
-                    # Last flare class (- if no flares)
-                    last_flare = flr_data[-1].get('classType', '-')
-                    data["space_environment"]["xray_flux"] = last_flare
+                    data["space_environment"]["xray_flux"] = flr_data[-1].get('classType', 'B')
 
-            print(f"[V] Success! NASA Data updated.")
+            print(f"[V] Success! Space Weather is synced with current time.")
                 
         except Exception as e:
             print(f"[X] NASA Connection Error: {e}")
@@ -296,7 +300,7 @@ async def get_nearest_icao(lat:float, lon:float):
 async def parse_notams(lat, lon):
     pass
 
-async def parse_flights(lat, lon, radius_km=200):
+async def parse_flights(lat, lon, radius_km=1000):
     lat_delta = radius_km / 111.1
     # Longitude degree length: 111.1 * cos(latitude)
     lon_delta = radius_km / (111.1 * math.cos(math.radians(lat)))
@@ -329,6 +333,7 @@ async def parse_flights(lat, lon, radius_km=200):
                 
                 data["aviation"]["shedules"] = flights
                 print(f"[V] Success! Flight shedules updated.")
+            else: print(f"[!] Flights API Error: {resp.status_code}")
         except Exception as e: print(f"[X] Flights API Error: {e}")
 
 # ================================= STRATEGIC FUNCTIONS (>14 DAYS) ==============================================
@@ -411,8 +416,47 @@ async def get_aqi_trends(target_time):
             print(f">[X] AQI Trends Connection Error: {e}")
             return []
 
-async def predict_donki(target_time):
-    pass
+async def predict_nasa_donki(target_time):
+    trends = []
+    
+    print(f"[*] Analyzing solar trends for the last {HISTORY_WINDOW_YEARS} years...")
+
+    async with httpx.AsyncClient() as client:
+        for i in range(1, HISTORY_WINDOW_YEARS + 1):
+            start_dt = target_time - relativedelta(years=i, days=3)
+            end_dt = target_time - relativedelta(years=i) + relativedelta(days=3)
+
+            params = {
+                "startDate": start_dt.strftime("%Y-%m-%d"),
+                "endDate": end_dt.strftime("%Y-%m-%d"),
+                "api_key": NASA_KEY
+            }
+
+            try:
+                # Check Solar Flares (FLR) for that historical window
+                resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
+                
+                if resp.status_code == 200:
+                    flares = resp.json()
+                    # Count flares and find the strongest one in that window
+                    count = len(flares)
+                    strongest = "N/A"
+                    if count > 0:
+                        # Sorting by class: X > M > C > B
+                        strongest = sorted([f.get('classType', 'B') for f in flares])[-1]
+                    
+                    trends.append({
+                        "year": start_dt.year,
+                        "flare_count": count,
+                        "peak_class": strongest
+                    })
+                else: print(f">[!] NASA DONKI API Error for year {start_dt.year}: {resp.status_code}")
+                
+            except Exception as e:
+                print(f">[X] Trend error for year {start_dt.year}: {e}")
+                continue
+    data["space_environment"]["donki_trends"] = trends
+    print(f"[V] Trend analysis complete. {len(trends)} years processed.")
 
 async def process_space_objects(lat, lon, target_time, objects):
     ts = sf.load.timescale()
@@ -593,7 +637,7 @@ async def calculate_local(lat, lon, alt, target_utc_time): # -------------------
 
 print("=== Starting API Tests ===")
 
-greenvich_time = utc_time(input_data["timestamp"], input_data["timezone"])
+greenvich_time = utc_time(input_data["target_timestamp"], input_data["timezone"])
 
 async def parse_all(input_time):
     lat, lon = input_data["coordinates"]
@@ -618,7 +662,7 @@ async def parse_all(input_time):
             })
     # NASA X
     await parse_donki()
-    await predict_donki(input_time)
+    await predict_nasa_donki(input_time)
     # Space Track
     tle = await get_spacetrack_op()
     await process_space_objects(lat, lon, input_time, tle)

@@ -2,6 +2,7 @@
 import os
 import math
 import json
+import time
 import datetime
 from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
@@ -48,13 +49,13 @@ APIS = {
     "WAQI": "https://api.waqi.info/feed/geo:",
     # NOTAMs & Flights
     "AVIATION_TRAFFIC": "https://opensky-network.org/api/states/all",
-    "AVIATION_NOTAM": "https://avwx.rest/api/notam/"
+    "AVIATION_NOTAM": "https://notams.aim.faa.gov/notamSearch/nsquerynotam"
 }
 
 input_data = {
         "cosmodrome": "custom",
         "coordinates": [43.4224, 77.0062],
-        "target_timestamp": "2026-02-09T12:00:00Z",
+        "target_timestamp": "2026-02-12T12:00:00Z",
         "request_time": datetime.utcnow().isoformat() + "Z",
         "timezone": "UTC+5"
  }
@@ -64,8 +65,8 @@ data = {
         "location": {
             "name": "-",              # From OSM - Country-City
         },
-        "wind_profile": [],           # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
-        "aqi": {"pm2_5": None, "pm10": None, "no2": None, "so2": None, "o3": None, "co": None},
+        "wind_profile_now": [],           # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+        "aqi_now": {"pm2_5": None, "pm10": None, "no2": None, "so2": None, "o3": None, "co": None},
         "aqi_trends": [],
         "weather_summary": {
             "pressure_surface": None, # Pressure on surface
@@ -76,13 +77,13 @@ data = {
             "weather_normal": []      # Weather normal for HISTORY_WINDOW_YEARS years
         },
         "space_environment": {
-            "kp_index": None,         # From NASA (0-9)
-            "xray_flux": None,        # From NASA (Solar flares)
+            "kp_index_now": None,     # From NASA (0-9)
+            "xray_flux_now": None,    # From NASA (Solar flares)
             "donki_trends": [],       # DONKI trendss
-            "mag_declination": None,  # From WMM (Degrees)
-            "sun_pos": [],            # [Azimuth, Elevation]
-            "moon_pos": [],           # [Azimuth, Elevation]
-            "objects": []             # List of TLE/Debris from Space-Track
+            "mag_declination_pr":None,# From WMM (Degrees)
+            "sun_pos_pr": [],         # [Azimuth, Elevation]
+            "moon_pos_pr": [],        # [Azimuth, Elevation]
+            "objects_predicted": []   # List of TLE/Debris from Space-Track
         },
         "surface": {
             "height_msl": None,       # Height
@@ -90,9 +91,9 @@ data = {
             "terrain_type": "-"       # Soil/Rock/Water
         },
         "aviation": {
-            "notams": [],             # Active warnings
-            "shedules": [],           # Fights
-            "airspace_status": "-"    # Open/Closed
+            "shedules_now": []        # Fights
+            #"notams": [],            # Active warnings
+            #"airspace_status": "-"   # Open/Closed
         }
 }
 
@@ -169,7 +170,7 @@ async def parse_meteo_op(lat, lon): # ------------------- OPEN-METEO - DATA: [Wi
                     # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
                     new_profile.append([alt, speed, direction, temp])
                 
-                data["wind_profile"] = new_profile
+                data["wind_profile_now"] = new_profile
                 
                 print(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
             else:
@@ -192,12 +193,12 @@ async def parse_waqi_op(lat, lon): # ------------------- WAQI - DATA: [AQI: pm2_
                 if res.get("status") == "ok":
                     iaqi = res["data"].get("iaqi", {})
                     
-                    data["aqi"]["pm2_5"] = iaqi.get("pm25", {}).get("v", None)
-                    data["aqi"]["pm10"] = iaqi.get("pm10", {}).get("v", None)
-                    data["aqi"]["no2"] = iaqi.get("no2", {}).get("v", None)
-                    data["aqi"]["so2"] = iaqi.get("so2", {}).get("v", None)
-                    data["aqi"]["o3"] = iaqi.get("o3", {}).get("v", None)
-                    data["aqi"]["co"] = iaqi.get("co", {}).get("v", None)
+                    data["aqi_now"]["pm2_5"] = iaqi.get("pm25", {}).get("v", None)
+                    data["aqi_now"]["pm10"] = iaqi.get("pm10", {}).get("v", None)
+                    data["aqi_now"]["no2"] = iaqi.get("no2", {}).get("v", None)
+                    data["aqi_now"]["so2"] = iaqi.get("so2", {}).get("v", None)
+                    data["aqi_now"]["o3"] = iaqi.get("o3", {}).get("v", None)
+                    data["aqi_now"]["co"] = iaqi.get("co", {}).get("v", None)
                     
                     print(f"[V] Success! AQI data updated.")
                 else:
@@ -208,7 +209,7 @@ async def parse_waqi_op(lat, lon): # ------------------- WAQI - DATA: [AQI: pm2_
         except Exception as e:
             print(f"[X] Connection Error: {e}")
 
-async def parse_donki():
+async def parse_donki(): 
     # Yesterday - now
     now = datetime.now()
     start_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -224,8 +225,8 @@ async def parse_donki():
             gst_resp = await client.get(APIS["NASA_DONKI"] + "GST", params=params)
             flr_resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
             
-            data["space_environment"]["kp_index"] = 0
-            data["space_environment"]["xray_flux"] = "A0.0" 
+            data["space_environment"]["kp_index_now"] = 0
+            data["space_environment"]["xray_flux_now"] = "A0.0" 
 
             # Kp-index
             if gst_resp.status_code == 200:
@@ -234,12 +235,12 @@ async def parse_donki():
                     last_storm = gst_data[-1]
                     all_kp = [item.get('kpIndex', 0) for item in last_storm.get('allKpIndex', [])]
                     if all_kp:
-                        data["space_environment"]["kp_index"] = all_kp[-1] # Actual
+                        data["space_environment"]["kp_index_now"] = all_kp[-1] # Actual
             
             if flr_resp.status_code == 200:
                 flr_data = flr_resp.json()
                 if flr_data:
-                    data["space_environment"]["xray_flux"] = flr_data[-1].get('classType', 'B')
+                    data["space_environment"]["xray_flux_now"] = flr_data[-1].get('classType', 'B')
 
             print(f"[V] Success! Space Weather is synced with current time.")
                 
@@ -277,7 +278,7 @@ async def get_spacetrack_op(): # ------------------- SPACE-TRACK - DATA: [Space:
             print(f"[X] Space-Track Connection Error: {e}")
             return []
 
-async def get_nearest_icao(lat:float, lon:float):
+async def get_nearest_icao(lat:float, lon:float): # --------------- [X] ICAO NEAR COORINATESDS ----------------
     url = f"https://avwx.rest/api/station/near/{lat},{lon}"
     headers = {"Authorization": f"BEARER {AVWX_TOKEN}"}
     
@@ -297,8 +298,6 @@ async def get_nearest_icao(lat:float, lon:float):
             print(f"[X] Station lookup connection failed: {e}")
     
     return None
-async def parse_notams(lat, lon):
-    pass
 
 async def parse_flights(lat, lon, radius_km=1000):
     lat_delta = radius_km / 111.1
@@ -498,7 +497,7 @@ async def process_space_objects(lat, lon, target_time, objects):
             continue
 
     processed.sort(key=lambda x: x['position_prediction']['range_km']) # Sort by nearest
-    data["space_environment"]["objects"] = processed
+    data["space_environment"]["objects_predicted"] = processed
 
 # ================================= FUNCTIONS WITHOUT TIME DEPENDENCE ==============================================
 
@@ -611,12 +610,12 @@ async def calculate_local(lat, lon, alt, target_utc_time): # -------------------
         sun = ephem.Sun(observer)
         moon = ephem.Moon(observer)
         
-        data["space_environment"]["sun_pos"] = [
+        data["space_environment"]["sun_pos_pr"] = [
             round(math.degrees(sun.az), 2), 
             round(math.degrees(sun.alt), 2)
         ]
         
-        data["space_environment"]["moon_pos"] = [
+        data["space_environment"]["moon_pos_pr"] = [
             round(math.degrees(moon.az), 2), 
             round(math.degrees(moon.alt), 2)
         ]
@@ -628,7 +627,7 @@ async def calculate_local(lat, lon, alt, target_utc_time): # -------------------
             dec = mag.dec
         except: dec = geomag.declination(lat, lon, alt) 
             
-        data["space_environment"]["mag_declination"] = round(dec, 2)
+        data["space_environment"]["mag_declination_pr"] = round(dec, 2)
 
         print(f"[V] Local calculations complete.")
         
@@ -668,8 +667,7 @@ async def parse_all(input_time):
     await process_space_objects(lat, lon, input_time, tle)
     # Magnetosphere & Sun/Moon
     await calculate_local(lat, lon, data["surface"]["height_msl"], input_time)
-    # NOTAMs & Flights
-    await parse_notams(lat, lon)
+    # Flights
     await parse_flights(lat, lon)
 
 asyncio.run(parse_all(greenvich_time))

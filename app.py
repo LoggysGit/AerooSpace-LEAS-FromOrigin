@@ -10,14 +10,11 @@ import modules.reporter as reports  # File Manager
 import modules.registrator as reg   # API Key Manager
 
 # === Constants ===
-SYSTEM_ROLE = """
-You are a Lead Aerospace Flight Engineer. 
-"""
 MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 
 # === Objects & Variables ===
 data_fetcher = parser.DataControlManager()
-ai = model.AIModel(MODEL_PATH, SYSTEM_ROLE)
+ai = model.AIModel(MODEL_PATH)
 
 # === App ===
 class MainApp(QMainWindow):

@@ -1,0 +1,54 @@
+{
+    "input_data": {
+        "cosmodrome": "custom",
+        "coordinates": [0, 0],
+        "target_timestamp": "2026-01-01T00:00:00Z",
+        "request_time": "2026-01-01T00:00:00Z",
+        "timezone": "UTC+0"
+    },
+    "fetched_data": {
+        "location": { "name": "-" },
+        "wind_profile_now": [],        
+        "aqi_now": {"pm2_5": -1, "pm10": -1, "no2": -1, "so2": -1, "o3": -1, "co": -1},
+        "aqi_trends": [],
+        "weather_summary": {
+            "pressure_surface": -1, 
+            "average_humidity": -1,
+            "cloud_cover": -1,
+            "visibility": -1,
+            "forecast_7d": [],
+            "weather_normal": []
+        },
+        "space_environment": {
+            "kp_index_now": -1,
+            "xray_flux_now": -1,
+            "donki_trends": [],  
+            "mag_declination_pr":-1,
+            "sun_pos_pr": [],      
+            "moon_pos_pr": [],    
+            "objects_predicted": []   
+        },
+        "surface": {
+            "height_msl": -1,      
+            "slope_degree": -1,   
+            "terrain_type": "-"   
+        },
+        "aviation": {
+            "shedules_now": []
+        }
+    },
+    "ai_analytics":{
+        "review": "",
+        "risks": [],
+        "recommendations": "",
+        "verdict": "",
+        "env_score": 0
+    },
+    "chat_history":[
+        "[AI]: ",
+        "[USER]: ",
+        "[AI]: ",
+        "[USER]: ",
+        "[AI]: "
+    ]
+}

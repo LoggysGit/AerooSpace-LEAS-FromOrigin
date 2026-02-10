@@ -45,3 +45,164 @@ Launch Environment Analysis System (LEAS) "FromOrigin" - программная 
     - Расширение спектра анализируемых данных
     - Формирование информационной карты популярных площадок запуска и космодромов
     - Разделение функционала ПО на разные лицензии, включая бесплатную для увеличения охвата аудитории
+
+= ПРОМПТЫ =
+
+RAW - Роль:
+Ты - ведущий инженер по безопасности пусков.
+Ты умеешь анализировать входящие данные для вынесения вердикта о пригодности запуска аппарата, и это входит в твои обязанности.
+От твоего ответа зависит успешность всей миссии, так что будь рассудителен
+
+RAW - SoW:
+Данные о местности содержатся в JSON-файле.
+Типы данных:
+-Исторические (Архивные) - в окне в HISTORY_WINDOW_YEARS лет
+-Данные на момент запроса request_time
+-Предсказанные данные на момент выбранной даты target_timestamp
+{
+        "location": {
+            "name": "-",              # Наименование места, где находится точка
+        },
+        "wind_profile_now": [],       # Данные о ветре на момент запроса [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+        "aqi_now": {"pm2_5": None, "pm10": None, "no2": None, "so2": None, "o3": None, "co": None}, # Скан ИКВ в регионе на момент запроса
+        "aqi_trends": [],             # Архив тенденций ИКВ в данной местности
+        "weather_summary": {
+            "pressure_surface": None, # Давление на поверхности на момент запроса
+            "average_humidity": None, # Средняя влажность (%) на момент запроса
+            "cloud_cover": None,      # Процент покрытия неба облаками (%) на момент запроса
+            "visibility": None,       # Видимость неба в метрах на момент запроса
+            "forecast_7d": [],        # Прогноз погоды на 7 дней от момента запроса (Weathercode)
+            "weather_normal": []      # Архив погоды за последние А лет, месяц и день одинаковы дате запроса
+        },
+        "space_environment": {
+            "kp_index_now": None,     # KP-Index на момент запроса
+            "xray_flux_now": None,    # Вспышки на Солнце на момент запроса
+            "donki_trends": [],       # Данные о солнечной активности в регионе за последние HISTORY_WINDOW_YEARS лет
+            "mag_declination_pr":None,# Расчетное значение магнитосферы в регионе в дату пуска
+            "sun_pos_pr": [],         # Предсказанная позиция Солнца в дату пуска [Azimuth, Elevation]
+            "moon_pos_pr": [],        # Предсказанная позиция Луны в дату пуска [Azimuth, Elevation]
+            "objects_predicted": []   # Обьекты, полученные на момент запроса, но с корректировкой данных, предсказанной на дату пуска
+        },
+        "surface": {
+            "height_msl": None,       # Высота в метрах над уровнем моря
+            "slope_degree": None,     # Уклон поверхности
+            "terrain_type": "-"       # Тип поверхности (Простой алгоритм)
+        },
+        "aviation": {
+            "shedules_now": []        # Активные на момент запроса рейсы, находящиеся в радиусе от указанной позиции
+        }
+    }
+---------------------------------------------------------------------
+### Statement of Work (SoW): Data Structure Analysis
+
+The environmental and situational data is provided in a JSON format. 
+Data is categorized into three temporal layers:
+1. **Historical (Archive):** Historical trends within a window of [HISTORY_WINDOW_YEARS] years.
+2. **Real-time (Now):** Data captured at the 'request_time'.
+3. **Predicted (PR):** Calculated/propagated values for the specific 'target_timestamp' (launch date).
+
+#### JSON Schema Definition:
+{
+  "location": {
+    "name": "string"               // Geolocation name of the target site.
+  },
+  "wind_profile_now": [            // Vertical wind scan at request time.
+    [Altitude(m), Speed(m/s), Direction(deg), Temp(C)] 
+  ],
+  "aqi_now": {                     // Air Quality Index (AQI) at request time.
+    "pm2_5": float, "pm10": float, "no2": float, "so2": float, "o3": float, "co": float 
+  },
+  "aqi_trends": [                  // Historical AQI data for the same calendar date in previous years.
+    {"date": "ISO8601", "content": { ... }}
+  ],
+  "weather_summary": {
+    "pressure_surface": float,     // Surface pressure in hPa (request time).
+    "average_humidity": int,       // Average humidity percentage (%) (request time).
+    "cloud_cover": int,            // Total cloud cover percentage (%) (request time).
+    "visibility": int,             // Meteorological visibility in meters (request time).
+    "forecast_7d": [int],          // 7-day weather forecast starting from request time (WMO weather codes).
+    "weather_normal": {            // Climate normals (averages) for this location and date over A-years.
+        "temp_norm": float, "cloud_norm": float, "pressure_norm": float
+    }
+  },
+  "space_environment": {
+    "kp_index_now": int,           // Planetary K-index (geomagnetic activity) at request time.
+    "xray_flux_now": "string",     // Solar X-ray flare class (e.g., "M2.8") at request time.
+    "donki_trends": [              // Solar activity history (CME/Flares) for [HISTORY_WINDOW_YEARS].
+        {"year": int, "flare_count": int, "peak_class": "string"}
+    ],
+    "mag_declination_pr": float,   // Calculated magnetic declination for the target launch date.
+    "sun_pos_pr": [az, el],        // Predicted Sun position at launch time [Azimuth, Elevation].
+    "moon_pos_pr": [az, el],       // Predicted Moon position at launch time [Azimuth, Elevation].
+    "objects_predicted": [         // Satellite/Debris orbital data propagated to the launch date.
+        {"name": "string", "is_visible": bool, "position_prediction": { ... }}
+    ]
+  },
+  "surface": {
+    "height_msl": float,           // Elevation above Mean Sea Level (meters).
+    "slope_degree": float,         // Surface slope gradient (degrees).
+    "terrain_type": "string"       // Surface classification (e.g., "Flat Plain", "Mountainous").
+  },
+  "aviation": {
+    "shedules_now": [              // Active aircraft within the proximity radius at request time.
+        {"callsign": "string", "altitude_m": float, "velocity_ms": float, "on_ground": bool}
+    ]
+  }
+}
+
+### Statement of Work (SoW): Data Structure Analysis
+
+The environmental and situational data is provided in a JSON format. 
+Data is categorized into three temporal layers:
+1. **Historical (Archive):** Historical trends within a window of [HISTORY_WINDOW_YEARS] years.
+2. **Real-time (Now):** Data captured at the 'request_time'.
+3. **Predicted (PR):** Calculated/propagated values for the specific 'target_timestamp' (launch date).
+
+#### JSON Schema Definition:
+{
+  "location": {
+    "name": "string"               // Geolocation name of the target site.
+  },
+  "wind_profile_now": [            // Vertical wind scan at request time.
+    [Altitude(m), Speed(m/s), Direction(deg), Temp(C)] 
+  ],
+  "aqi_now": {                     // Air Quality Index (AQI) at request time.
+    "pm2_5": float, "pm10": float, "no2": float, "so2": float, "o3": float, "co": float 
+  },
+  "aqi_trends": [                  // Historical AQI data for the same calendar date in previous years.
+    {"date": "ISO8601", "content": { ... }}
+  ],
+  "weather_summary": {
+    "pressure_surface": float,     // Surface pressure in hPa (request time).
+    "average_humidity": int,       // Average humidity percentage (%) (request time).
+    "cloud_cover": int,            // Total cloud cover percentage (%) (request time).
+    "visibility": int,             // Meteorological visibility in meters (request time).
+    "forecast_7d": [int],          // 7-day weather forecast starting from request time (WMO weather codes).
+    "weather_normal": {            // Climate normals (averages) for this location and date over A-years.
+        "temp_norm": float, "cloud_norm": float, "pressure_norm": float
+    }
+  },
+  "space_environment": {
+    "kp_index_now": int,           // Planetary K-index (geomagnetic activity) at request time.
+    "xray_flux_now": "string",     // Solar X-ray flare class (e.g., "M2.8") at request time.
+    "donki_trends": [              // Solar activity history (CME/Flares) for [HISTORY_WINDOW_YEARS].
+        {"year": int, "flare_count": int, "peak_class": "string"}
+    ],
+    "mag_declination_pr": float,   // Calculated magnetic declination for the target launch date.
+    "sun_pos_pr": [az, el],        // Predicted Sun position at launch time [Azimuth, Elevation].
+    "moon_pos_pr": [az, el],       // Predicted Moon position at launch time [Azimuth, Elevation].
+    "objects_predicted": [         // Satellite/Debris orbital data propagated to the launch date.
+        {"name": "string", "is_visible": bool, "position_prediction": { ... }}
+    ]
+  },
+  "surface": {
+    "height_msl": float,           // Elevation above Mean Sea Level (meters).
+    "slope_degree": float,         // Surface slope gradient (degrees).
+    "terrain_type": "string"       // Surface classification (e.g., "Flat Plain", "Mountainous").
+  },
+  "aviation": {
+    "shedules_now": [              // Active aircraft within the proximity radius at request time.
+        {"callsign": "string", "altitude_m": float, "velocity_ms": float, "on_ground": bool}
+    ]
+  }
+}

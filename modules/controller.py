@@ -2,13 +2,17 @@ from llama_cpp import Llama
 import asyncio
 
 class AIModel:
-    def __init__(self, model_path, role):
+    def __init__(self, model_path, role=""):
         self.llm = Llama(
             model_path=model_path,
             n_gpu_layers=-1,  # Try to offload all layers to GPU
             n_ctx=4096,       # Context window
             verbose=False     # Disable logs for clean output
         )
+        self.role = role
+        self.chat_history = [{"role": "system", "content": self.role}]
+
+    def setRole(self, role):
         self.role = role
         self.chat_history = [{"role": "system", "content": self.role}]
 
@@ -35,12 +39,9 @@ class AIModel:
         return answer
 
     def _generate(self, messages):
-        """
-        Internal sync method
-        """
         output = self.llm.create_chat_completion(
             messages=messages,
             temperature=0.7,
-            max_tokens=2048
+            max_tokens=4096
         )
         return output['choices'][0]['message']['content']

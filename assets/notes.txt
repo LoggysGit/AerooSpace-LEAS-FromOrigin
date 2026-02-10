@@ -206,3 +206,11 @@ Data is categorized into three temporal layers:
     ]
   }
 }
+
+"ai_analytics":{
+        "review": "",
+        "risks": [],
+        "recommendations": "",
+        "verdict": "",
+        "env_score": 0
+},

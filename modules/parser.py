@@ -17,7 +17,7 @@ import ephem
 import skyfield.api as sf
 
 # - Constants & Defines -
-PROMPTS_JSON_PATH = "resourf"
+PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'prompts.json')
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
 HISTORY_WINDOW_YEARS = 5
@@ -64,14 +64,13 @@ class DataControlManager:
         "timezone": "UTC+0"
     }
 
-    def setInput(cdrome, lat, lon, time, utc_zone):
-        global input_data, cosmodrome
-        cosmodrome = (not cdrome == "custom")
-        input_data["cosmodrome"] = cdrome
-        input_data["coordinates"] = [lat, lon]
-        input_data["target_timestamp"] = time
-        input_data["request_time"] = datetime.utcnow().isoformat() + "Z"
-        input_data["timezone"] = utc_zone
+    def setInput(self, cdrome, lat, lon, time, utc_zone):
+        self.cosmodrome = (not cdrome == "custom")
+        self.input_data["cosmodrome"] = cdrome
+        self.input_data["coordinates"] = [lat, lon]
+        self.input_data["target_timestamp"] = time
+        self.input_data["request_time"] = datetime.utcnow().isoformat() + "Z"
+        self.input_data["timezone"] = utc_zone
 
     def utc_time(input_time, timezone):
         raw_offset = timezone.replace("UTC", "").strip()
@@ -671,8 +670,8 @@ class DataControlManager:
 
     # ================================== MAIN FETCH ====================================
     async def fetchAllData(self):
-        lat, lon = input_data["coordinates"]
-        input_time = self.utc_time(input_data["target_timestamp"], input_data["timezone"])
+        lat, lon = self.input_data["coordinates"]
+        input_time = self.utc_time(self.input_data["target_timestamp"], self.input_data["timezone"])
         #time_delta = input_time - datetime.now(dt_tz.utc)
         # OSM & OpenTopo
         await self.parseOSM(lat, lon)
@@ -712,14 +711,14 @@ class DataControlManager:
 {prompts["analytic_prompt"]}
 =======================================
 USER'S INPUT:
-{self.input_data}
+{json.dumps(self.input_data)}
 =======================================
 HISTORY_WINDOW_YEARS = {HISTORY_WINDOW_YEARS}
 DATA JSON GUIDE:
 {prompts["sow"]}
 =======================================
 FETCHED DATA:
-{self.data}
+{json.dumps(self.data)}
 =======================================
 YOU MUST GIVE A RESULT STRICTLY IN THIS FORMAT:
 {prompts["output_format"]}

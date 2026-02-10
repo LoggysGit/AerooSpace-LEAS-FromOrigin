@@ -16,8 +16,8 @@ class AIModel:
         self.role = role
         self.chat_history = [{"role": "system", "content": self.role}]
 
-    async def analyze(self, data, prompt):
-        user_message = f"DATA: {data}\n\nPROMPT: {prompt}" # Formating the request with data and specific user prompt
+    async def analyze(self, prompt):
+        user_message = f"{prompt}" # Formating the request with data and specific user prompt
 
         messages = [
             {"role": "system", "content": self.role},

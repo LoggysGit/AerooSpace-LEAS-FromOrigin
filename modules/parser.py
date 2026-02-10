@@ -1,12 +1,20 @@
 # - Tools -
+import os
+import math
+import json
+import time
+import datetime
+from datetime import datetime, timedelta, timezone as dt_tz
+from dateutil.relativedelta import relativedelta
 import asyncio
 import httpx
-import os
 # - Dotenv -
 from dotenv import load_dotenv
 load_dotenv()
 # - Parse Dependences -
 import geomag
+import ephem
+import skyfield.api as sf
 
 # - Constants & Defines -
 # Altitude to Pressure Mapping
@@ -24,36 +32,39 @@ WAQI_TOKEN = os.getenv("WAQI_TOKEN")
 # - Refers -
 APIS = {
     # NASA: Solar flares and Radiation (Space Weather)
-    "NASA_DONKI": "https://api.nasa.gov/DONKI/notifications",
+    "NASA_DONKI": "https://api.nasa.gov/DONKI/",
     # Space-Track: TLE Data for debris and satellites
     "SPACETRACK_AUTH": "https://www.space-track.org/ajaxauth/login",
-    "SPACETRACK_QUERY": "https://www.space-track.org/basicspacedata/query/class/tle_latest/ORDINAL/1/format/json",
+    "SPACETRACK_QUERY": f"https://www.space-track.org/basicspacedata/query/class/gp/EPOCH/%3Enow-30/MEAN_MOTION/%3E11.25/format/json/limit/{SPACETRACK_LIMIT}",
     # OpenWeather: Ground level pressure, humidity and icons
     "OPENWEATHER": "https://api.openweathermap.org/data/2.5/weather",
     # OpenMeteo: High altitude wind, temp and air density (Pressure levels)
     "METEO": "https://api.open-meteo.com/v1/forecast",
-    # OpenStreetMap: Reverse geocoding (City/Country name)
+    "AQI_TRENDS": "https://air-quality-api.open-meteo.com/v1/air-quality?",
+    # OpenStreetMap: RevQVBoxLayout,erse geocoding (City/Country name)
     "OSM": "https://nominatim.openstreetmap.org/reverse",
     # OpenTopo: Surface elevation (SRTM 30m model)
     "OPENTOPO": "https://api.opentopodata.org/v1/srtm30m",
     # WAQI: Ground air quality sensors (Chemical composition)
     "WAQI": "https://api.waqi.info/feed/geo:",
-    # FAA: NOTAMs (Airspace closures)
-    "NOTAM": "https://notams.aim.faa.gov/notamSearch/search"
+    # Flights
+    "AVIATION_TRAFFIC": "https://opensky-network.org/api/states/all",
 }
 
 class DataControlManager:
-    cosmodrome = False;
+    cosmodrome = False
 
     def __init__(self):
         pass
 
     # = Input =
+
     input_data = {
         "cosmodrome": "custom",
-        "coordinates": [0, 0],
-        "timestamp": "2000-01-01T12:00:00Z",
-        "timezone": "UTC+0"
+        "coordinates": [43.4224, 77.0062],
+        "target_timestamp": "2026-02-12T12:00:00Z",
+        "request_time": datetime.utcnow().isoformat() + "Z",
+        "timezone": "UTC+5"
     }
 
     def setInput(cdrome, lat, lon, time, utc_zone):
@@ -67,38 +78,41 @@ class DataControlManager:
     # = Data =
     data = {
         "location": {
-            "name": "",            # From OSM - Country-City
-            "elevation": 0         # From OpenTopo
+            "name": "-",              # From OSM - Country-City
         },
-        "wind_profile": [],        # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
-        "aqi": {"pm2_5": 0, "pm10": 0, "no2": 0, "so2": 0, "o3": 0, "co": 0},
+        "wind_profile_now": [],           # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
+        "aqi_now": {"pm2_5": None, "pm10": None, "no2": None, "so2": None, "o3": None, "co": None},
+        "aqi_trends": [],
         "weather_summary": {
-            "pressure_surface": 0, # Pressure on surface
-            "average_humidity": 0, # Humidity in lower atmosphere
-            "cloud_cover": 0,      # In % (Critical for optical tracking)
-            "visibility": 0,       # In meters
-            "forecast_7d": []      # Forecast on 7 days (Week)
+            "pressure_surface": None, # Pressure on surface
+            "average_humidity": None, # Humidity in lower atmosphere
+            "cloud_cover": None,      # In % (Critical for optical tracking)
+            "visibility": None,       # In meters
+            "forecast_7d": [],        # Forecast on 7 days (Week)
+            "weather_normal": []      # Weather normal for HISTORY_WINDOW_YEARS years
         },
         "space_environment": {
-            "kp_index": 0,         # From NASA (0-9)
-            "xray_flux": 0,        # From NASA (Solar flares)
-            "mag_declination": 0,  # From WMM (Degrees)
-            "sun_pos": [0, 0],     # [Azimuth, Elevation]
-            "moon_pos": [0, 0],    # [Azimuth, Elevation]
-            "objects": []          # List of TLE/Debris from Space-Track
+            "kp_index_now": None,     # From NASA (0-9)
+            "xray_flux_now": None,    # From NASA (Solar flares)
+            "donki_trends": [],       # DONKI trendss
+            "mag_declination_pr":None,# From WMM (Degrees)
+            "sun_pos_pr": [],         # [Azimuth, Elevation]
+            "moon_pos_pr": [],        # [Azimuth, Elevation]
+            "objects_predicted": []   # List of TLE/Debris from Space-Track
         },
         "surface": {
-            "height_msl": 0,
-            "slope_degree": 0,     # Surface flatness
-            "terrain_type": ""     # Soil/Rock/Water
+            "height_msl": None,       # Height
+            "slope_degree": None,     # Surface flatness
+            "terrain_type": "-"       # Soil/Rock/Water
         },
         "aviation": {
-            "notams": [],          # Active warnings
-            "airspace_status": ""  # Open/Closed
+            "shedules_now": []        # Fights
+            #"notams": [],            # Active warnings
+            #"airspace_status": "-"   # Open/Closed
         }
     }
 
-    # Main Fetch
+    # ================================== Main Fetch ====================================
     async def fetchAllData():
         async with httpx.AsyncClient(timeout=10.0) as client:
             tasks = [

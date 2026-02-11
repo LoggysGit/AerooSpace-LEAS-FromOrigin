@@ -335,7 +335,7 @@ class DataControlManager:
                             "on_ground": s[8]                  # True if taxiing/parked
                         })
 
-                    self.data["aviation"]["shedules"] = flights
+                    self.data["aviation"]["shedules_now"] = flights
                     print(f"[V] Success! Flight shedules updated.")
                 else: print(f"[!] Flights API Error: {resp.status_code}")
             except Exception as e: print(f"[X] Flights API Error: {e}")

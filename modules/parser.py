@@ -2,12 +2,11 @@
 import os
 import math
 import json
-import time
 import datetime
 from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
-import asyncio
 import httpx
+#import asyncio
 # - Dotenv -
 from dotenv import load_dotenv
 load_dotenv()
@@ -51,7 +50,7 @@ APIS = {
 }
 
 class DataControlManager:
-    cosmodrome = False
+    spaceport_def = False
 
     def __init__(self): pass
 
@@ -64,9 +63,9 @@ class DataControlManager:
         "timezone": "UTC+0"
     }
 
-    def setInput(self, cdrome, lat, lon, time, utc_zone):
-        self.cosmodrome = (not cdrome == "custom")
-        self.input_data["cosmodrome"] = cdrome
+    def setInput(self, spaceport, lat, lon, time, utc_zone):
+        self.spaceport_def = (not spaceport == "custom")
+        self.input_data["spaceport"] = spaceport
         self.input_data["coordinates"] = [lat, lon]
         self.input_data["target_timestamp"] = time
         self.input_data["request_time"] = datetime.utcnow().isoformat() + "Z"

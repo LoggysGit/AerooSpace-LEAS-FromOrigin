@@ -57,7 +57,7 @@ class DataControlManager:
 
     # = Input =
     input_data = {
-        "cosmodrome": "custom",
+        "spaceport": "custom",
         "coordinates": [0, 0],
         "target_timestamp": "2026-01-01T00:00:00Z",
         "request_time": "2026-01-01T00:00:00Z",

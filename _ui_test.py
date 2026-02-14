@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
                              QFrame, QLabel, QComboBox, QLineEdit, QPushButton, 
-                             QScrollArea, QSpacerItem, QSizePolicy)
+                             QScrollArea, QSpacerItem, QSizePolicy, QStackedWidget)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon, QColor, QIntValidator
 from PySide6.QtCore import Qt, QSize
 
@@ -134,37 +134,10 @@ class AerooSpaceApp(QWidget):
         except ValueError:
             widget.setText(str(min_val))
 
-    def init_ui(self):
-        self.setWindowTitle("AerooSpace LEAS")
-        self.resize(1100, 700)
-        self.setStyleSheet(STYLE_SHEET)
-
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(40)
-
-        # --- ANALYTICS BLOCK (PA) ---
-        pa_block = QVBoxLayout()
-        
-        lbl_create = QLabel("Create Analytics")
-        lbl_create.setObjectName("Header")
-        pa_block.addWidget(lbl_create)
-
-        panel_left = QFrame()
-        panel_left.setObjectName("Panel")
-        pa_block_layout = QVBoxLayout(panel_left)
-        pa_block_layout.setContentsMargins(30, 30, 30, 30)
-        pa_block_layout.setSpacing(15)
-
-        # Analytics Type Selector
-        self.analytics_type_combo = QComboBox()
-        self.add_single_field(pa_block_layout, "Type of Analytics", self.analytics_type_combo)
-        self.analytics_type_combo.addItem("Point Analytics")
-        self.analytics_type_combo.addItem("Location Comparing")
-        
+    def setup_analytics_ui(self, parent_layout, point_index):
         # Spaceport
         self.spaceport_combo = QComboBox()
-        self.add_single_field(pa_block_layout, "Spaceport", self.spaceport_combo)
+        self.add_single_field(parent_layout, "Spaceport", self.spaceport_combo)
         self.spaceport_combo.addItem("custom")
         self.load_spaceports(self.spaceport_combo)
         
@@ -176,7 +149,7 @@ class AerooSpaceApp(QWidget):
         self.add_field_to_layout(row_coords, "Longitude", self.longitude_coord)
         self.latitude_coord.setMaxLength(7)
         self.longitude_coord.setMaxLength(7)
-        pa_block_layout.addLayout(row_coords)
+        parent_layout.addLayout(row_coords)
         
         # - Full Time -
         row_time = QHBoxLayout()
@@ -219,7 +192,7 @@ class AerooSpaceApp(QWidget):
         )
         self.day_edit.setFixedWidth(45)
         self.add_field_to_layout(row_date, "Day", self.day_edit)
-        pa_block_layout.addLayout(row_date)
+        parent_layout.addLayout(row_date)
 
         # UTC Block
         utc_label = QLabel("UTC")
@@ -233,17 +206,61 @@ class AerooSpaceApp(QWidget):
 
         row_time.addLayout(row_date)
         
-        pa_block_layout.addLayout(row_time)
+        parent_layout.addLayout(row_time)
+
+    def init_ui(self):
+        self.setWindowTitle("AerooSpace LEAS")
+        self.resize(1100, 700)
+        self.setStyleSheet(STYLE_SHEET)
+
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(40)
+
+        # --- ANALYTICS BLOCK ---
+        analytics_block = QVBoxLayout()
+        
+        lbl_create = QLabel("Create Analytics")
+        lbl_create.setObjectName("Header")
+        analytics_block.addWidget(lbl_create)
+
+        panel_left = QFrame()
+        panel_left.setObjectName("Panel")
+        analytics_block_layout = QVBoxLayout(panel_left)
+        analytics_block_layout.setContentsMargins(30, 30, 30, 30)
+        analytics_block_layout.setSpacing(15)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+        scroll_area.setStyleSheet("background: transparent;")
+
+        scroll_content = QWidget()
+        scroll_content.setObjectName("ScrollContent")
+        points = QVBoxLayout(scroll_content)
+        points.setSpacing(15)
+        points.setContentsMargins(10, 10, 10, 10)
+
+        scroll_area.setWidget(scroll_content)
+
+        analytics_block_layout.addWidget(scroll_area)
+
+        for i in range(1):
+            self.setup_analytics_ui(points, i)
+            if i > 0:
+                div = QLabel("---------------------------------------------------------------------")
+                points.addWidget(div)
+
+        btn_add = QPushButton("+")
+        points.addWidget(btn_add)
 
         btn_analyse = QPushButton("Analyse")
         btn_analyse.setObjectName("AnalyseBtn")
         btn_analyse.setCursor(Qt.PointingHandCursor)
-        pa_block_layout.addWidget(btn_analyse)
-        pa_block_layout.addStretch()
+        analytics_block_layout.addWidget(btn_analyse)
+        analytics_block_layout.addStretch()
 
-        pa_block.addWidget(panel_left)
-
-        # --- ANALYTICS BLOCK (LC) ---
+        analytics_block.addWidget(panel_left)
 
 
         # --- HISTORY ---
@@ -276,7 +293,7 @@ class AerooSpaceApp(QWidget):
 
         #main_layout.add
         # ADD BOTH TO A MAIN LAYOUT
-        main_layout.addLayout(pa_block, 1)
+        main_layout.addLayout(analytics_block, 1)
         main_layout.addLayout(right_container, 1)
 
 if __name__ == "__main__":

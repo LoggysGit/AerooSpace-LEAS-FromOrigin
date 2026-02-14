@@ -5,5 +5,7 @@
 
     "analytic_prompt": "",
 
+    "compare_prompt": "",
+
     "output_format": ""
 }

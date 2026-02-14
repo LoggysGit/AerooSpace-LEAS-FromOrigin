@@ -2,3 +2,21 @@
 .env
 *.gguf
 modules/__pycache__/
+
+# Unused fonts
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Bold.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-BoldItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-ExtraBold.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-ExtraBoldItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-ExtraLight.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-ExtraLightItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Italic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Light.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-LightItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Medium.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-MediumItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Regular.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-SemiBold.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-SemiBoldItalic.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-Thin.ttf
+assets/fonts/JetBrainsMono/JetBrainsMonoNL-ThinItalic.ttf

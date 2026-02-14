@@ -9,7 +9,7 @@ import modules.registrator as reg   # API Key Manager
 MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 
 # === Objects & Variables ===
-ai = model.AIModel(MODEL_PATH)
+#ai = model.AIModel(MODEL_PATH)
 data_fetcher = parser.DataControlManager()
 
 # === Test ===
@@ -18,5 +18,5 @@ asyncio.run(data_fetcher.fetchAllData())
 full_prompt = data_fetcher.getFullPrompt()
 print(full_prompt)
 
-ai.setRole("")
+#ai.setRole("")
 #ai.analyze(full_prompt)

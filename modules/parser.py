@@ -1,17 +1,16 @@
-# - Tools -
+# - Dependences -
 import os
 import math
 import json
-import time
 import datetime
 from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
-import asyncio
 import httpx
+#import asyncio
 # - Dotenv -
 from dotenv import load_dotenv
 load_dotenv()
-# - Parse Dependences -
+# - Tools -
 import geomag
 import ephem
 import skyfield.api as sf
@@ -51,28 +50,28 @@ APIS = {
 }
 
 class DataControlManager:
-    cosmodrome = False
+    spaceport_def = False
 
     def __init__(self): pass
 
     # = Input =
     input_data = {
-        "cosmodrome": "custom",
+        "spaceport": "custom",
         "coordinates": [0, 0],
         "target_timestamp": "2026-01-01T00:00:00Z",
         "request_time": "2026-01-01T00:00:00Z",
         "timezone": "UTC+0"
     }
 
-    def setInput(self, cdrome, lat, lon, time, utc_zone):
-        self.cosmodrome = (not cdrome == "custom")
-        self.input_data["cosmodrome"] = cdrome
+    def setInput(self, spaceport, lat, lon, time, utc_zone):
+        self.spaceport_def = (not spaceport == "custom")
+        self.input_data["spaceport"] = spaceport
         self.input_data["coordinates"] = [lat, lon]
         self.input_data["target_timestamp"] = time
         self.input_data["request_time"] = datetime.utcnow().isoformat() + "Z"
         self.input_data["timezone"] = utc_zone
 
-    def utc_time(input_time, timezone):
+    def utc_time(self, input_time, timezone):
         raw_offset = timezone.replace("UTC", "").strip()
         try: offset_hours = int(raw_offset)
         except ValueError: offset_hours = 0
@@ -81,7 +80,6 @@ class DataControlManager:
         dt_local = datetime.fromisoformat(clean_iso)
 
         dt_utc = dt_local - timedelta(hours=offset_hours)
-
         dt_utc = dt_utc.replace(tzinfo=dt_tz.utc)
 
         return dt_utc
@@ -128,8 +126,6 @@ class DataControlManager:
     # -------------- OPERATIONAL FUNCTIONS --------------
 
     async def parseMeteo(self, lat, lon): # --- OPEN-METEO - DATA: [Wind Profile, Summary, Forecast] ---
-        global data
-        
         forecast = 7
         hourly_params = [
             "surface_pressure", "relativehumidity_2m", "cloudcover", "visibility"
@@ -167,13 +163,13 @@ class DataControlManager:
                     d = res.get("daily", {})
 
                     # --- Weather Summary ---
-                    data["weather_summary"]["pressure_surface"] = h.get("surface_pressure", [0])[0]
-                    data["weather_summary"]["average_humidity"] = h.get("relativehumidity_2m", [0])[0]
-                    data["weather_summary"]["cloud_cover"] = h.get("cloudcover", [0])[0]
-                    data["weather_summary"]["visibility"] = h.get("visibility", [0])[0]
+                    self.data["weather_summary"]["pressure_surface"] = h.get("surface_pressure", [0])[0]
+                    self.data["weather_summary"]["average_humidity"] = h.get("relativehumidity_2m", [0])[0]
+                    self.data["weather_summary"]["cloud_cover"] = h.get("cloudcover", [0])[0]
+                    self.data["weather_summary"]["visibility"] = h.get("visibility", [0])[0]
 
                     # --- Forecast 7d (Weathercode) ---
-                    data["weather_summary"]["forecast_7d"] = d.get("weathercode", [])
+                    self.data["weather_summary"]["forecast_7d"] = d.get("weathercode", [])
 
                     # --- Wind Profile ---
                     new_profile = []
@@ -186,7 +182,7 @@ class DataControlManager:
                         # [Altitude (m), Speed (m/s), Direction (deg), Temp (C)]
                         new_profile.append([alt, speed, direction, temp])
 
-                    data["wind_profile_now"] = new_profile
+                    self.data["wind_profile_now"] = new_profile
 
                     print(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
                 else:
@@ -195,9 +191,7 @@ class DataControlManager:
             except Exception as e:
                 print(f"[X] Connection Error: {e}")
 
-    async def parseWAQI(lat, lon): # --- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ---
-        global data
-        
+    async def parseWAQI(self, lat, lon): # --- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ---
         url = APIS["WAQI"] + f"{lat};{lon}/"
         params = {"token": WAQI_TOKEN}
 
@@ -211,25 +205,19 @@ class DataControlManager:
                     if res.get("status") == "ok":
                         iaqi = res["data"].get("iaqi", {})
 
-                        data["aqi_now"]["pm2_5"] = iaqi.get("pm25", {}).get("v", None)
-                        data["aqi_now"]["pm10"] = iaqi.get("pm10", {}).get("v", None)
-                        data["aqi_now"]["no2"] = iaqi.get("no2", {}).get("v", None)
-                        data["aqi_now"]["so2"] = iaqi.get("so2", {}).get("v", None)
-                        data["aqi_now"]["o3"] = iaqi.get("o3", {}).get("v", None)
-                        data["aqi_now"]["co"] = iaqi.get("co", {}).get("v", None)
+                        self.data["aqi_now"]["pm2_5"] = iaqi.get("pm25", {}).get("v", None)
+                        self.data["aqi_now"]["pm10"] = iaqi.get("pm10", {}).get("v", None)
+                        self.data["aqi_now"]["no2"] = iaqi.get("no2", {}).get("v", None)
+                        self.data["aqi_now"]["so2"] = iaqi.get("so2", {}).get("v", None)
+                        self.data["aqi_now"]["o3"] = iaqi.get("o3", {}).get("v", None)
+                        self.data["aqi_now"]["co"] = iaqi.get("co", {}).get("v", None)
 
                         print(f"[V] Success! AQI data updated.")
-                    else:
-                        print(f"[!] WAQI Error: {res.get('data')}")
-                else:
-                    print(f"[!] API Error: {response.status_code}")
+                    else: print(f"[!] WAQI Error: {res.get('data')}")
+                else: print(f"[!] API Error: {response.status_code}")
+            except Exception as e: print(f"[X] Connection Error: {e}")
 
-            except Exception as e:
-                print(f"[X] Connection Error: {e}")
-
-    async def parseDONKI(): # --- NASA DONKI - DATA: [kp_index, xray_flux] ---
-        global data
-        
+    async def parseDONKI(self): # --- NASA DONKI - DATA: [kp_index, xray_flux] ---
         # Yesterday - now
         now = datetime.now()
         start_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -245,8 +233,8 @@ class DataControlManager:
                 gst_resp = await client.get(APIS["NASA_DONKI"] + "GST", params=params)
                 flr_resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
 
-                data["space_environment"]["kp_index_now"] = 0
-                data["space_environment"]["xray_flux_now"] = "A0.0" 
+                self.data["space_environment"]["kp_index_now"] = 0
+                self.data["space_environment"]["xray_flux_now"] = "A0.0" 
 
                 # Kp-index
                 if gst_resp.status_code == 200:
@@ -254,22 +242,17 @@ class DataControlManager:
                     if gst_data:
                         last_storm = gst_data[-1]
                         all_kp = [item.get('kpIndex', 0) for item in last_storm.get('allKpIndex', [])]
-                        if all_kp:
-                            data["space_environment"]["kp_index_now"] = all_kp[-1] # Actual
-
+                        if all_kp: self.data["space_environment"]["kp_index_now"] = all_kp[-1] # Actual
+                # Solar Flares
                 if flr_resp.status_code == 200:
                     flr_data = flr_resp.json()
-                    if flr_data:
-                        data["space_environment"]["xray_flux_now"] = flr_data[-1].get('classType', 'B')
+                    if flr_data: self.data["space_environment"]["xray_flux_now"] = flr_data[-1].get('classType', 'B')
 
                 print(f"[V] Success! Space Weather is synced with current time.")
-
             except Exception as e:
                 print(f"[X] NASA Connection Error: {e}")
 
-    async def getSpaceTrack(): # --- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ---
-        global data
-        
+    async def getSpaceTrack(self): # --- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ---
         auth_data = {
             "identity": SPACETRACK_LOGIN,
             "password": SPACETRACK_PASSW
@@ -300,9 +283,7 @@ class DataControlManager:
                 print(f"[X] Space-Track Connection Error: {e}")
                 return []
 
-    async def getNearestICAO(lat:float, lon:float): # --- [X] ICAO NEAR COORINATESDS ---
-        global data
-        
+    async def getNearestICAO(self, lat:float, lon:float): # --- [X] ICAO NEAR COORINATESDS ---
         url = f"https://avwx.rest/api/station/near/{lat},{lon}"
         headers = {"Authorization": f"BEARER {AVWX_TOKEN}"}
 
@@ -313,8 +294,7 @@ class DataControlManager:
                     result = resp.json()
                     if isinstance(result, list) and len(result) > 0:
                         icao = result[0].get('station', {}).get('icao')
-                        if icao:
-                            return icao
+                        if icao: return icao
                     print(f"[-] No station found for coords: {lat}, {lon}")
                 else:
                     print(f"[!] Station lookup API error: {resp.status_code}")
@@ -323,9 +303,7 @@ class DataControlManager:
 
         return None
 
-    async def parseFlights(lat, lon, radius_km=100): # --- FLIGHTS NEAR lat, lon ---
-        global data
-
+    async def parseFlights(self, lat, lon, radius_km=200): # --- FLIGHTS NEAR lat, lon ---
         lat_delta = radius_km / 111.1
         # Longitude degree length: 111.1 * cos(latitude)
         lon_delta = radius_km / (111.1 * math.cos(math.radians(lat)))
@@ -356,16 +334,14 @@ class DataControlManager:
                             "on_ground": s[8]                  # True if taxiing/parked
                         })
 
-                    data["aviation"]["shedules"] = flights
+                    self.data["aviation"]["shedules_now"] = flights
                     print(f"[V] Success! Flight shedules updated.")
                 else: print(f"[!] Flights API Error: {resp.status_code}")
             except Exception as e: print(f"[X] Flights API Error: {e}")
 
-    # -------------- STRATEGIC FUNCTIONS (>14 DAYS) --------------
+    # -------------- STRATEGIC FUNCTIONS --------------
 
-    async def getWeatherNormal(lat, lon, target_time):
-        global data
-
+    async def getWeatherNormal(self, lat, lon, target_time):
         all_history = []
 
         print(f"[*] Calculating weather normal...")
@@ -396,20 +372,18 @@ class DataControlManager:
             avg_clouds = sum([sum(y['cloud_cover'])/len(y['cloud_cover']) for y in all_history]) / len(all_history)
             avg_press = sum([sum(y['surface_pressure'])/len(y['surface_pressure']) for y in all_history]) / len(all_history)
 
-            data["weather_summary"]["weather_normal"] = {
+            self.data["weather_summary"]["weather_normal"] = {
                 "temp_norm": round(avg_temp, 1),
                 "cloud_norm": round(avg_clouds, 0),
                 "pressure_norm": round(avg_press, 1)
             }
             print(f"[V] Weather normal calculated based on {HISTORY_WINDOW_YEARS} years of history.")
 
-    async def getAQITrends(target_time):
-        global data
-
+    async def getAQITrends(self, target_time):
         date_str = target_time.strftime("%Y-%m-%d")
         target_hour = target_time.hour
 
-        lat, lon = input_data['coordinates']
+        lat, lon = self.input_data['coordinates']
         fetch_address = (
             f"{APIS['AQI_TRENDS']}latitude={lat}&longitude={lon}"
             f"&hourly=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide,sulphur_dioxide"
@@ -435,7 +409,6 @@ class DataControlManager:
                         "co": h_data.get("carbon_monoxide", [])[target_hour]
                     }
                     print(f">[V] AQI Forecast retrieved for {date_str}.")
-
                     return trend
                 else:
                     print(f">[!] AQI Trends API Error: {resp.status_code}")
@@ -445,9 +418,7 @@ class DataControlManager:
                 print(f">[X] AQI Trends Connection Error: {e}")
                 return []
 
-    async def predictDONKI(target_time):
-        global data
-
+    async def predictDONKI(self, target_time):
         trends = []
 
         print(f"[*] Analyzing solar trends for the last {HISTORY_WINDOW_YEARS} years...")
@@ -486,12 +457,10 @@ class DataControlManager:
                 except Exception as e:
                     print(f">[X] Trend error for year {start_dt.year}: {e}")
                     continue
-        data["space_environment"]["donki_trends"] = trends
+        self.data["space_environment"]["donki_trends"] = trends
         print(f"[V] Trend analysis complete. {len(trends)} years processed.")
 
-    async def processSpaceObjects(lat, lon, target_time, objects):
-        global data
-
+    async def processSpaceObjects(self, lat, lon, target_time, objects):
         ts = sf.load.timescale()
         t = ts.from_datetime(target_time.replace(tzinfo=dt_tz.utc))
 
@@ -531,11 +500,11 @@ class DataControlManager:
                 continue
 
         processed.sort(key=lambda x: x['position_prediction']['range_km']) # Sort by nearest
-        data["space_environment"]["objects_predicted"] = processed
+        self.data["space_environment"]["objects_predicted"] = processed
 
     # -------------- FUNCTIONS WITHOUT TIME DEPENDENCE --------------
 
-    async def parseOSM(lat, lon): # ------------------- OSM - DATA: [Location: Name] -------------------
+    async def parseOSM(self, lat, lon): # ------------------- OSM - DATA: [Location: Name] -------------------
         params = {
             "lat": lat,
             "lon": lon,
@@ -564,7 +533,7 @@ class DataControlManager:
                                address.get("village", 
                                address.get("state", "Open Space"))))
 
-                    data["location"]["name"] = f"{country}-{city}"
+                    self.data["location"]["name"] = f"{country}-{city}"
 
                     print(f"[V] Success! Location identified.")
                 else:
@@ -573,7 +542,7 @@ class DataControlManager:
             except Exception as e:
                 print(f"[X] Connection Error: {e}")
 
-    async def parseOpenTopo(lat, lon, m=55):  # -------------------  OSM - DATA: [Surface: *] -------------------
+    async def parseOpenTopo(self, lat, lon, m=55):  # -------------------  OSM - DATA: [Surface: *] -------------------
         delta = m * 0.00001
 
         # 5 Dots
@@ -613,13 +582,13 @@ class DataControlManager:
                         # Slope in degrees
                         slope = math.degrees(math.atan(math.sqrt(dz_dx**2 + dz_dy**2)))
 
-                        data["surface"]["height_msl"] = round(h_c, 2)
-                        data["surface"]["slope_degree"] = round(slope, 2)
+                        self.data["surface"]["height_msl"] = round(h_c, 2)
+                        self.data["surface"]["slope_degree"] = round(slope, 2)
 
                         # terrain-type Logic
-                        if h_c < 0: data["surface"]["terrain_type"] = "Water / Sea Level"
-                        elif slope > 13: data["surface"]["terrain_type"] = "Mountainous / Rough"
-                        else: data["surface"]["terrain_type"] = "Flat Plain"
+                        if h_c < 0: self.data["surface"]["terrain_type"] = "Sea Level"
+                        elif slope > 13: self.data["surface"]["terrain_type"] = "Mountainous"
+                        else: self.data["surface"]["terrain_type"] = "Flat Plain"
 
                         print(f"[V] Success! Surface profile updated.")
                     else:
@@ -630,7 +599,7 @@ class DataControlManager:
             except Exception as e:
                 print(f"[X] Connection Error: {e}")
 
-    async def calculateLocal(lat, lon, alt, target_utc_time): # ------------------- LOCAL CALCULATING [Magnetosphere, Sun, Moon] -------------------
+    async def calculateLocal(self, lat, lon, alt, target_utc_time): # ------------------- LOCAL CALCULATING [Magnetosphere, Sun, Moon] -------------------
         try:
             print(f"[*] Calculating celestial and magnetic data for {target_utc_time}...")
 
@@ -644,12 +613,12 @@ class DataControlManager:
             sun = ephem.Sun(observer)
             moon = ephem.Moon(observer)
 
-            data["space_environment"]["sun_pos_pr"] = [
+            self.data["space_environment"]["sun_pos_pr"] = [
                 round(math.degrees(sun.az), 2), 
                 round(math.degrees(sun.alt), 2)
             ]
 
-            data["space_environment"]["moon_pos_pr"] = [
+            self.data["space_environment"]["moon_pos_pr"] = [
                 round(math.degrees(moon.az), 2), 
                 round(math.degrees(moon.alt), 2)
             ]
@@ -661,7 +630,7 @@ class DataControlManager:
                 dec = mag.dec
             except: dec = geomag.declination(lat, lon, alt) 
 
-            data["space_environment"]["mag_declination_pr"] = round(dec, 2)
+            self.data["space_environment"]["mag_declination_pr"] = round(dec, 2)
 
             print(f"[V] Local calculations complete.")
 
@@ -671,7 +640,8 @@ class DataControlManager:
     # ================================== MAIN FETCH ====================================
     async def fetchAllData(self):
         lat, lon = self.input_data["coordinates"]
-        input_time = self.utc_time(self.input_data["target_timestamp"], self.input_data["timezone"])
+        target_time, tz = self.input_data["target_timestamp"], self.input_data["timezone"]
+        input_time = self.utc_time(target_time, tz)
         #time_delta = input_time - datetime.now(dt_tz.utc)
         # OSM & OpenTopo
         await self.parseOSM(lat, lon)
@@ -686,7 +656,7 @@ class DataControlManager:
             past_time = input_time - relativedelta(years=i)
             archive_data = await self.getAQITrends(past_time)
             if archive_data:
-                data["aqi_trends"].append({
+                self.data["aqi_trends"].append({
                     "date": past_time.strftime("%Y-%m-%d"),
                     "content": archive_data
                 })
@@ -697,7 +667,7 @@ class DataControlManager:
         tle = await self.getSpaceTrack()
         await self.processSpaceObjects(lat, lon, input_time, tle)
         # Magnetosphere & Sun/Moon
-        await self.calculateLocal(lat, lon, data["surface"]["height_msl"], input_time)
+        await self.calculateLocal(lat, lon, self.data["surface"]["height_msl"], input_time)
         # Flights
         await self.parseFlights(lat, lon)
 

@@ -252,6 +252,7 @@ class AerooSpaceApp(QWidget):
                 points.addWidget(div)
 
         btn_add = QPushButton("+")
+        btn_add.setCursor(Qt.PointingHandCursor)
         points.addWidget(btn_add)
 
         btn_analyse = QPushButton("Analyse")

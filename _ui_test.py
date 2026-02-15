@@ -8,6 +8,8 @@ from PySide6.QtCore import Qt, QSize
 from datetime import datetime
 import calendar
 
+import asyncio
+
 # --- Стили QSS (Темная тема) ---
 STYLE_SHEET = """
 QWidget {
@@ -36,6 +38,7 @@ QLineEdit, QComboBox {
     font-size: 14px;
     color: #FFFFFF;
 }
+
 QPushButton#AnalyseBtn {
     background-color: #FFFFFF;
     color: #000000;
@@ -47,10 +50,16 @@ QPushButton#AnalyseBtn {
 QPushButton#AnalyseBtn:hover {
     background-color: #E0E0E0;
 }
+
 QScrollArea {
     border: none;
     background-color: transparent;
 }
+
+QPushButton#DeletePointBtn { 
+    background: #442222; color: white; border: none; 
+}
+QPushButton#DeletePointBtn:hover { background: #ff4444; }
 """
 
 class HistoryItem(QFrame):
@@ -134,10 +143,50 @@ class AerooSpaceApp(QWidget):
         except ValueError:
             widget.setText(str(min_val))
 
-    def setup_analytics_ui(self, parent_layout, point_index):
+    def create_divider(self, container_layout):
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Plain)
+        line.setStyleSheet("""
+            background-color: #3d3d3d; 
+            max-height: 1px; 
+            margin: 10px 0;
+            border: none;
+        """)
+        container_layout.addWidget(line)
+
+    def setup_analytics_ui(self, parent_layout, point_id):
+        point_container = QWidget()
+        point_container.setObjectName(f"point_{point_id}")
+        container_layout = QVBoxLayout(point_container)
+        container_layout.setContentsMargins(0, 5, 0, 5)
+
+        header_layout = QHBoxLayout()
+        lbl = QLabel(f"LOCATION #{point_id}")
+        lbl.setStyleSheet("font-weight: bold;")
+        header_layout.addWidget(lbl)
+
+        header_layout.addStretch()
+
+        if point_id > 1:
+            self.create_divider(container_layout)
+
+            btn_del = QPushButton("×")
+            btn_del.setFixedSize(40, 40)
+            btn_del.setCursor(Qt.PointingHandCursor)
+
+            btn_del.setObjectName("DeletePointBtn")
+            btn_del.style().unpolish(btn_del)
+            btn_del.style().polish(btn_del)
+
+            btn_del.clicked.connect(lambda: self.remove_point(point_container))
+            header_layout.addWidget(btn_del)
+
+        container_layout.addLayout(header_layout)
+
         # Spaceport
         self.spaceport_combo = QComboBox()
-        self.add_single_field(parent_layout, "Spaceport", self.spaceport_combo)
+        self.add_single_field(container_layout, "Spaceport", self.spaceport_combo)
         self.spaceport_combo.addItem("custom")
         self.load_spaceports(self.spaceport_combo)
         
@@ -149,7 +198,7 @@ class AerooSpaceApp(QWidget):
         self.add_field_to_layout(row_coords, "Longitude", self.longitude_coord)
         self.latitude_coord.setMaxLength(7)
         self.longitude_coord.setMaxLength(7)
-        parent_layout.addLayout(row_coords)
+        container_layout.addLayout(row_coords)
         
         # - Full Time -
         row_time = QHBoxLayout()
@@ -160,39 +209,39 @@ class AerooSpaceApp(QWidget):
          # Year
         current_y = datetime.now().year
         y_window = 100
-        self.year_edit = QLineEdit(str(current_y))
-        self.year_edit.setMaxLength(4)
-        self.year_edit.editingFinished.connect(
-            lambda: self.fix_range(self.year_edit, current_y, current_y + y_window)
+        year_edit = QLineEdit(str(current_y))
+        year_edit.setMaxLength(4)
+        year_edit.editingFinished.connect(
+            lambda: self.fix_range(year_edit, current_y, current_y + y_window)
         )
-        self.year_edit.setFixedWidth(60)
-        self.add_field_to_layout(row_date, "Year", self.year_edit)
+        year_edit.setFixedWidth(60)
+        self.add_field_to_layout(row_date, "Year", year_edit)
          # Month
-        self.month_edit = QLineEdit("02")
-        self.month_edit.setMaxLength(2)
-        self.month_edit.editingFinished.connect(
-            lambda: self.fix_range(self.month_edit, 1, 12)
+        month_edit = QLineEdit("02")
+        month_edit.setMaxLength(2)
+        month_edit.editingFinished.connect(
+            lambda: self.fix_range(month_edit, 1, 12)
         )
-        self.month_edit.editingFinished.connect(
+        month_edit.editingFinished.connect(
             lambda: self.fix_range(
-                self.day_edit, 1, 
-                calendar.monthrange(int(self.year_edit.text()), int(self.month_edit.text()))[1]
+                day_edit, 1, 
+                calendar.monthrange(int(year_edit.text()), int(month_edit.text()))[1]
             )
         )
-        self.month_edit.setFixedWidth(45)
-        self.add_field_to_layout(row_date, "Month", self.month_edit)
+        month_edit.setFixedWidth(45)
+        self.add_field_to_layout(row_date, "Month", month_edit)
          # Day
-        self.day_edit = QLineEdit("14")
-        self.day_edit.setMaxLength(2)
-        self.day_edit.editingFinished.connect(
+        day_edit = QLineEdit("14")
+        day_edit.setMaxLength(2)
+        day_edit.editingFinished.connect(
             lambda: self.fix_range(
-                self.day_edit, 1, 
-                calendar.monthrange(int(self.year_edit.text()), int(self.month_edit.text()))[1]
+                day_edit, 1, 
+                calendar.monthrange(int(year_edit.text()), int(month_edit.text()))[1]
             )
         )
-        self.day_edit.setFixedWidth(45)
-        self.add_field_to_layout(row_date, "Day", self.day_edit)
-        parent_layout.addLayout(row_date)
+        day_edit.setFixedWidth(45)
+        self.add_field_to_layout(row_date, "Day", day_edit)
+        container_layout.addLayout(row_date)
 
         # UTC Block
         utc_label = QLabel("UTC")
@@ -206,7 +255,29 @@ class AerooSpaceApp(QWidget):
 
         row_time.addLayout(row_date)
         
-        parent_layout.addLayout(row_time)
+        container_layout.addLayout(row_time)
+
+        parent_layout.insertWidget(parent_layout.count() - 1, point_container)
+
+    def add_point(self):
+        if self.points_count < 3:
+            self.points_count += 1
+
+            self.setup_analytics_ui(self.points_layout, self.points_count)
+
+            if self.points_count >= 3: self.btn_add.hide()
+            #else: self.btn_add.show()
+
+    def remove_point(self, widget):
+        widget.deleteLater()
+        self.points_count -= 1
+        if self.points_count < 3: self.btn_add.show()
+
+    def start_analysing():
+        pass
+
+    def setup_point_layout(self, parent_layout):
+        pass
 
     def init_ui(self):
         self.setWindowTitle("AerooSpace LEAS")
@@ -238,23 +309,27 @@ class AerooSpaceApp(QWidget):
         scroll_content = QWidget()
         scroll_content.setObjectName("ScrollContent")
         points = QVBoxLayout(scroll_content)
-        points.setSpacing(15)
-        points.setContentsMargins(10, 10, 10, 10)
+        points.setSpacing(20)
+        points.setContentsMargins(10, 10, 10, 80)
 
         scroll_area.setWidget(scroll_content)
 
         analytics_block_layout.addWidget(scroll_area)
 
-        for i in range(1):
-            self.setup_analytics_ui(points, i)
-            if i > 0:
-                div = QLabel("---------------------------------------------------------------------")
-                points.addWidget(div)
+        # POINTS
+        self.points_layout = points 
+        self.points_count = 0
 
-        btn_add = QPushButton("+")
-        btn_add.setCursor(Qt.PointingHandCursor)
-        points.addWidget(btn_add)
+        self.btn_add = QPushButton("+")
+        self.btn_add.setCursor(Qt.PointingHandCursor)
+        self.btn_add.setObjectName("AddBtn")
 
+        self.add_point() 
+
+        self.btn_add.clicked.connect(self.add_point)
+        self.points_layout.addWidget(self.btn_add)
+
+        # START ANALYSING
         btn_analyse = QPushButton("Analyse")
         btn_analyse.setObjectName("AnalyseBtn")
         btn_analyse.setCursor(Qt.PointingHandCursor)

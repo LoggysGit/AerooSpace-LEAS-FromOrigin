@@ -28,6 +28,8 @@ Launch Environment Analysis System (LEAS) "FromOrigin" - программная 
     - аэрокосмические стартапы и инжинерные команды
     - команды энтузиастов и независимых разработчиков космических технологий
 
+Анализ рынка:
+
 Возможности нашего ПО:
 * Актуальная информация с официальных API
 * Минималистичный, но понятный интерфейс
@@ -35,6 +37,8 @@ Launch Environment Analysis System (LEAS) "FromOrigin" - программная 
 * Легкая, но функциональная модель нейросети - Qwen 2.5 Instruct
 * Чщательно прописанная роль искусственного интеллекта
 * Комплексный, детализированный анализ на основе широкого объема данных
+
+Конкуренты и наше отличие:
 
 Монетизация проекта
 Основной моделью монетизации LEAS "FromOrigin" является лицензирование программного обеспечения. Учреждения, желающие получить ПО приобретают единовременную лицензию на использование системы с подписанием договора о сохранении интеллектуальной собственности.
@@ -93,119 +97,6 @@ RAW - SoW:
         }
     }
 ---------------------------------------------------------------------
-### Statement of Work (SoW): Data Structure Analysis
-
-The environmental and situational data is provided in a JSON format. 
-Data is categorized into three temporal layers:
-1. **Historical (Archive):** Historical trends within a window of [HISTORY_WINDOW_YEARS] years.
-2. **Real-time (Now):** Data captured at the 'request_time'.
-3. **Predicted (PR):** Calculated/propagated values for the specific 'target_timestamp' (launch date).
-
-#### JSON Schema Definition:
-{
-  "location": {
-    "name": "string"               // Geolocation name of the target site.
-  },
-  "wind_profile_now": [            // Vertical wind scan at request time.
-    [Altitude(m), Speed(m/s), Direction(deg), Temp(C)] 
-  ],
-  "aqi_now": {                     // Air Quality Index (AQI) at request time.
-    "pm2_5": float, "pm10": float, "no2": float, "so2": float, "o3": float, "co": float 
-  },
-  "aqi_trends": [                  // Historical AQI data for the same calendar date in previous years.
-    {"date": "ISO8601", "content": { ... }}
-  ],
-  "weather_summary": {
-    "pressure_surface": float,     // Surface pressure in hPa (request time).
-    "average_humidity": int,       // Average humidity percentage (%) (request time).
-    "cloud_cover": int,            // Total cloud cover percentage (%) (request time).
-    "visibility": int,             // Meteorological visibility in meters (request time).
-    "forecast_7d": [int],          // 7-day weather forecast starting from request time (WMO weather codes).
-    "weather_normal": {            // Climate normals (averages) for this location and date over A-years.
-        "temp_norm": float, "cloud_norm": float, "pressure_norm": float
-    }
-  },
-  "space_environment": {
-    "kp_index_now": int,           // Planetary K-index (geomagnetic activity) at request time.
-    "xray_flux_now": "string",     // Solar X-ray flare class (e.g., "M2.8") at request time.
-    "donki_trends": [              // Solar activity history (CME/Flares) for [HISTORY_WINDOW_YEARS].
-        {"year": int, "flare_count": int, "peak_class": "string"}
-    ],
-    "mag_declination_pr": float,   // Calculated magnetic declination for the target launch date.
-    "sun_pos_pr": [az, el],        // Predicted Sun position at launch time [Azimuth, Elevation].
-    "moon_pos_pr": [az, el],       // Predicted Moon position at launch time [Azimuth, Elevation].
-    "objects_predicted": [         // Satellite/Debris orbital data propagated to the launch date.
-        {"name": "string", "is_visible": bool, "position_prediction": { ... }}
-    ]
-  },
-  "surface": {
-    "height_msl": float,           // Elevation above Mean Sea Level (meters).
-    "slope_degree": float,         // Surface slope gradient (degrees).
-    "terrain_type": "string"       // Surface classification (e.g., "Flat Plain", "Mountainous").
-  },
-  "aviation": {
-    "shedules_now": [              // Active aircraft within the proximity radius at request time.
-        {"callsign": "string", "altitude_m": float, "velocity_ms": float, "on_ground": bool}
-    ]
-  }
-}
-
-### Statement of Work (SoW): Data Structure Analysis
-
-The environmental and situational data is provided in a JSON format. 
-Data is categorized into three temporal layers:
-1. **Historical (Archive):** Historical trends within a window of [HISTORY_WINDOW_YEARS] years.
-2. **Real-time (Now):** Data captured at the 'request_time'.
-3. **Predicted (PR):** Calculated/propagated values for the specific 'target_timestamp' (launch date).
-
-#### JSON Schema Definition:
-{
-  "location": {
-    "name": "string"               // Geolocation name of the target site.
-  },
-  "wind_profile_now": [            // Vertical wind scan at request time.
-    [Altitude(m), Speed(m/s), Direction(deg), Temp(C)] 
-  ],
-  "aqi_now": {                     // Air Quality Index (AQI) at request time.
-    "pm2_5": float, "pm10": float, "no2": float, "so2": float, "o3": float, "co": float 
-  },
-  "aqi_trends": [                  // Historical AQI data for the same calendar date in previous years.
-    {"date": "ISO8601", "content": { ... }}
-  ],
-  "weather_summary": {
-    "pressure_surface": float,     // Surface pressure in hPa (request time).
-    "average_humidity": int,       // Average humidity percentage (%) (request time).
-    "cloud_cover": int,            // Total cloud cover percentage (%) (request time).
-    "visibility": int,             // Meteorological visibility in meters (request time).
-    "forecast_7d": [int],          // 7-day weather forecast starting from request time (WMO weather codes).
-    "weather_normal": {            // Climate normals (averages) for this location and date over A-years.
-        "temp_norm": float, "cloud_norm": float, "pressure_norm": float
-    }
-  },
-  "space_environment": {
-    "kp_index_now": int,           // Planetary K-index (geomagnetic activity) at request time.
-    "xray_flux_now": "string",     // Solar X-ray flare class (e.g., "M2.8") at request time.
-    "donki_trends": [              // Solar activity history (CME/Flares) for [HISTORY_WINDOW_YEARS].
-        {"year": int, "flare_count": int, "peak_class": "string"}
-    ],
-    "mag_declination_pr": float,   // Calculated magnetic declination for the target launch date.
-    "sun_pos_pr": [az, el],        // Predicted Sun position at launch time [Azimuth, Elevation].
-    "moon_pos_pr": [az, el],       // Predicted Moon position at launch time [Azimuth, Elevation].
-    "objects_predicted": [         // Satellite/Debris orbital data propagated to the launch date.
-        {"name": "string", "is_visible": bool, "position_prediction": { ... }}
-    ]
-  },
-  "surface": {
-    "height_msl": float,           // Elevation above Mean Sea Level (meters).
-    "slope_degree": float,         // Surface slope gradient (degrees).
-    "terrain_type": "string"       // Surface classification (e.g., "Flat Plain", "Mountainous").
-  },
-  "aviation": {
-    "shedules_now": [              // Active aircraft within the proximity radius at request time.
-        {"callsign": "string", "altitude_m": float, "velocity_ms": float, "on_ground": bool}
-    ]
-  }
-}
 
 "ai_analytics":{
         "review": "", //
@@ -215,4 +106,30 @@ Data is categorized into three temporal layers:
         "env_score": 0 //
 },
 
-SCORE FORMULA
+ = DEFINES: = 
+Pconst = 1013.25hPa, Tconst = 15°C
+cloud_cover - COEFFICENT 0-1 (NOT PERCENTAGE 0-100!)
+true = int(1), false = int(0)
+xray_flux: C=int(5), M=int(30), X=int(80)
+IF(Si < 0) Si = 0
+latitude IN RADIANS
+
+FORMULA:
+LCS = (0.35*S1 + 0.25*S2 + 0.15*S3 + 0.15*S4 + 0.1*S5) * R1 * R2 * R3
+
+S1 = [100 - (|1013.25 - pressure_surface| / 2)] * 0.4 + 
+  [min(100, visibility / 100)] * 0.3 + 
+  [(100 * (1 - cloud_cover)) * (1 - 0.5 * [(min(winds.temperature) < -10) + (average_humidity > 70)])] * 0.3
+  ОБЬЯСНЕНИЕ: 
+S2 = max[0, 33 - (max(winds.speed))] * 3
+  ОБЬЯСНЕНИЕ: 
+S3 = [100 * e^{-0.15 * Kp}] - Xray
+  ОБЬЯСНЕНИЕ: 
+S4 = 100 * cos(latitude) + [height_msl / 500] - [20 * slope_degree]
+  ОБЬЯСНЕНИЕ: 
+S5 = max(0, 100 - 50 * count(shedules))
+  ОБЬЯСНЕНИЕ: 
+
+R1 = (max(winds.speed)) < 30
+R2 = kp_index < 7
+R3 = visibility > 5000

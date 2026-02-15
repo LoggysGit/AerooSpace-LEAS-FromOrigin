@@ -116,8 +116,6 @@ class DataControlManager:
         },
         "aviation": {
             "shedules_now": []        # Fights
-            #"notams": [],            # Active warnings
-            #"airspace_status": "-"   # Open/Closed
         }
     }
 
@@ -673,24 +671,23 @@ class DataControlManager:
 
     # ================================== OUTPUT FUNCTIONS ==================================
 
-    def getFetchedData(self): return self.data
+    def getFetchedData(self): return self.input_data, self.data
 
-    def getFullPrompt(self):
+    def getSinglePrompt(self):
         with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
         overall_prompt = f'''
-{prompts["analytic_prompt"]}
-=======================================
+{prompts["main_prompt"]}
+---------------------------------------
 USER'S INPUT:
 {json.dumps(self.input_data)}
-=======================================
+---------------------------------------
 HISTORY_WINDOW_YEARS = {HISTORY_WINDOW_YEARS}
-DATA JSON GUIDE:
+
 {prompts["sow"]}
-=======================================
+---------------------------------------
 FETCHED DATA:
 {json.dumps(self.data)}
-=======================================
-YOU MUST GIVE A RESULT STRICTLY IN THIS FORMAT:
+---------------------------------------
 {prompts["output_format"]}
         '''
         return overall_prompt

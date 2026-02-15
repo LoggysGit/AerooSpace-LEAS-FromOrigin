@@ -24,9 +24,9 @@
             "xray_flux_now": -1,
             "donki_trends": [],  
             "mag_declination_pr":-1,
-            "sun_pos_pr": [],      
-            "moon_pos_pr": [],    
-            "objects_predicted": []   
+            "sun_pos_pr": [],
+            "moon_pos_pr": [],
+            "objects_predicted": []
         },
         "surface": {
             "height_msl": -1,      

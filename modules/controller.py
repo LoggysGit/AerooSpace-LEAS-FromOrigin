@@ -5,8 +5,8 @@ class AIModel:
     def __init__(self, model_path, role=""):
         self.llm = Llama(
             model_path=model_path,
-            n_gpu_layers=-1,  # Try to offload all layers to GPU
-            n_ctx=4096,       # Context window
+            n_gpu_layers=8,  # Offload layers
+            n_ctx=16384,       # Context window
             verbose=False     # Disable logs for clean output
         )
         self.role = role
@@ -23,10 +23,14 @@ class AIModel:
             {"role": "system", "content": self.role},
             {"role": "user", "content": user_message}
         ]
+
+        print("[AI] Start Analysing...")
         
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self._generate, messages)
         
+        print("[AI] Success! Analytics finished.\n")
+
         return response
 
     async def ask(self, prompt):
@@ -41,7 +45,7 @@ class AIModel:
     def _generate(self, messages):
         output = self.llm.create_chat_completion(
             messages=messages,
-            temperature=0.7,
+            temperature=0.15,
             max_tokens=4096
         )
         return output['choices'][0]['message']['content']

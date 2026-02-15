@@ -1,0 +1,63 @@
+*MODEL TEST #1*
+
+Request Time: 2026.02.15 20:00
+Generating Duration: 20
+
+Input:
+
+[
+    {
+        "spaceport": "custom",
+        "coordinates": [13.2335, 27.7603],
+        "target_timestamp": "2026-02-21T12:00:00Z",
+        "timezone": "UTC+0"
+    },
+    {
+        "spaceport": "custom",
+        "coordinates": [42.4432, 30.3560],
+        "target_timestamp": "2026-02-22T12:00:00Z",
+        "timezone": "UTC+0"
+    },
+    {
+        "spaceport": "custom",
+        "coordinates": [60.5202, 110.3002],
+        "target_timestamp": "2026-01-25T12:00:00Z",
+        "timezone": "UTC+0"
+    }
+]
+
+Output:
+
+[
+    json{
+        "ai_analytics": {
+            "review": "The launch site at Sudan-Abu Fureisa has a latitude of 27.7603°N, with a height above MSL of 580.0 meters and a slope of 2.08°. The site is classified as a \'Flat Plain\', with no sea-level concerns. The wind profile and air quality data are limited, with missing values for PM2.5, PM10, NO2, SO2, O3, and CO. The pressure surface is missing, as is the average humidity, cloud cover, visibility, and 7-day weather forecast. The geomagnetic activity is low with a KP index of 0, and the X-ray flux is at the lowest level (A0.0). The predicted magnetic declination is 3.82°, and the sun and moon positions are calculated for the target launch date. The predicted satellite debris are at a safe distance, with no visible threats. However, the lack of real-time weather data and missing air quality indices poses significant risks.",
+            "risks": ["MISSING AIR QUALITY DATA", "MISSING WEATHER DATA", "LOW VISIBILITY DATA"],
+            "recommendations": "Due to missing critical data, the launch should be scrubbed. Ensure real-time weather and air quality data are available before proceeding.",
+            "verdict": "Launch should be scrubbed due to missing critical data.",
+            lcs": 0
+        }
+    }, 
+    json{
+        "ai_analytics": {
+            "review": "The launch site at Sudan-Abu Fureisa (coordinates: 42.4432, 30.356) presents several challenges. The site is at an elevation of 580 meters above MSL, with a slope of 2.08 degrees, indicating a relatively flat terrain. The latitude is 30.356 degrees, which translates to a cosine value of approximately 0.862. The geomagnetic activity is low with a Kp index of 0, and there are no significant solar X-ray flares predicted. However, the visibility and pressure data are missing, and the wind profile is not available, which are critical for the atmospheric stability index (S1). The space environment is relatively clear, with no immediate threats from CMEs or flares. The presence of multiple aircraft in the vicinity could pose a risk to airspace clearance and operational safety.",
+            "risks": ["MISSING VISIBILITY AND PRESSURE DATA", "NO WIND PROFILE DATA", "MULTIPLE AIRCRAFT IN VIZINITY"],
+            "recommendations": "Ensure that the missing atmospheric data is obtained before proceeding. Consider the potential impact of nearby aircraft on the launch. The site\'s flat terrain and low slope degree are advantageous for geoballistic index (S4).",
+            "verdict": "The launch cannot proceed due to missing critical data.",
+            "lcs": 0
+        }
+    }, 
+    json{
+        "ai_analytics": {
+            "review": "The launch site at Russia-Sakha Republic (coordinates: 60.5202, 110.3002) is a custom spaceport with a slope of 2.08 degrees. The atmospheric conditions are stable with a surface pressure of 952.5 hPa, which is 2.5 hPa below the ISO standard. Visibility is 1400 meters, which is within the acceptable range. The geomagnetic activity is low with a KP index of 0, and there are no significant X-ray flares predicted. The terrain is classified as a flat plain, and there are no active aircraft in the vicinity.",
+            "risks": ["High altitude wind shear", "Low visibility for optical tracking", "Moderate geomagnetic activity"],
+            "recommendations": "Ensure robust avionics and communication systems due to low geomagnetic activity. Monitor wind shear and optical tracking visibility closely. Consider using alternative launch windows if visibility conditions are not optimal.",
+            "verdict": "The launch site meets the visibility and geomagnetic criteria but has high altitude wind shear and moderate geomagnetic activity.",
+            "lcs": 0
+        }
+    }### Detailed Technical Analysis:\n- **Atmospheric Stability Index (S1):**\n  - Pressure deviation: \\( \\left| 1013.25 - 952.5 \\right| / 2 = 30.375 \\)\n  - Optical tracking visibility: \\( \\min(100, 1400 / 100) = 14 \\)\n  - Ice crystal formation risk: \\( 1 - 0.5 \\times (0 + 0) = 1 \\)\n  - \\( S1 = (100 - 30.375) \\times 0.4 + 14 \\times 0.3 + 1 \\times 0.3 = 79.625 \\times 0.4 + 4.2 + 0.3 = 31.85 + 4.2 + 0.3 = 36.35 \\)\n\n- **Aerodynamic Index (S2):**\n  - Max wind speed: 3.44 m/s (at 100m altitude)\n  - \\( S2 = \\max(0, 33 - 3.44) \\times 3 = 29.56 \\times 3 = 88.68 \\)\n\n- **Space Weather Index (S3):**\n  - KP index: 0\n  - X-ray flux: A0.0 (no penalty)\n  - \\( S3 = 100 \\times \\exp(-0.15 \\times 0) - 0 = 100 \\)\n\n- **Geoballistic Index (S4):**\n  - Latitude: \\( 60.5202 \\times \\pi / 180 = 1.057 \\) radians\n  - Height above MSL: 580.0 m\n  - Slope: 2.08 degrees\n  - \\( S4 = 100 \\times \\cos(1.057) + (580 / 500) - (20 \\times \\max(0, 2.08 - 2)) = 100 \\times 0.536 + 1.16 - 0 = 53.6 + 1.16 = 54.76 \\)\n\n- **Operational Safety Index (S5):**\n  - Since the spaceport is custom, full penalties apply for slope and safety.\n  - \\( S5 = \\max(0, 100 - (50 \\times 2.08)) = \\max(0, 100 - 104) = 0 \\)\n\n### Redline Compliance:\n- **R1 (Wind Gate):** \\( \\max(3.44) < 30 \\) - Pass\n- **R2 (Geomagnetic Gate):** \\( 0 < 7 \\) - Pass\n- **R3 (Visibility Gate):** \\( 1400 > 5000 \\) - Fail\n\n### Final LCS Calculation:\n- \\( LCS = (0.35 \\times 36.35 + 0.25 \\times 88.68 + 0.15 \\times 100 + 0.15 \\times 54.76 + 0.1 \\times 0) \\times 1 \\times 1 \\times 0 = 0 \\)\n\n### Verdict:\nThe launch site meets the visibility and geomagnetic criteria but has high altitude wind shear and moderate geomagnetic activity. The final LCS is 0 due to the failure of the visibility gate.'
+]
+
+Note:
+    Shrink min_visibility from 5000 to 4000
+    Edit Missing data sector in prompt

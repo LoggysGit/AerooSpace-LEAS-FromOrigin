@@ -45,7 +45,7 @@ class AIModel:
     def _generate(self, messages):
         output = self.llm.create_chat_completion(
             messages=messages,
-            temperature=0.15,
+            temperature=0.1,
             max_tokens=4096
         )
         return output['choices'][0]['message']['content']

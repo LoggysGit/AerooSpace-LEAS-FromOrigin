@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime
 
 import controller as model  # AI Model Controller
 import parser as fetcher # Data Parser
@@ -25,19 +26,19 @@ def getComparsionPrompt(inputs, data, analytics):
 inps = [
     {
         "spaceport": "custom",
-        "coordinates": [13.2335, 27.7603],
+        "coordinates": [71.6872, 128.8536],
         "target_timestamp": "2026-02-21T12:00:00Z",
         "timezone": "UTC+0"
     },
     {
         "spaceport": "custom",
-        "coordinates": [42.4432, 30.3560],
+        "coordinates": [-16.5000, -68.1193],
         "target_timestamp": "2026-02-22T12:00:00Z",
         "timezone": "UTC+0"
     },
     {
         "spaceport": "custom",
-        "coordinates": [60.5202, 110.3002],
+        "coordinates": [1.3521, 103.8198],
         "target_timestamp": "2026-01-25T12:00:00Z",
         "timezone": "UTC+0"
     }
@@ -49,7 +50,7 @@ async def analyseAllPoints(inputs):
 
     fetched, analytics = [], []
     for input in inputs:
-        print(" ======== NEW POINT ANALYSIS... ======== ")
+        print(" ========== STARTING POINT ANALYSIS... ========== ")
         prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"],)
         fetched.append(data_fetcher.getFetchedData())
         review = await ai.analyze(prompt)
@@ -61,6 +62,9 @@ async def analyseAllPoints(inputs):
     print(fetched)
     print("\n -------------------------------------------------------------------------------- \n")
     print(analytics)
+    print("\n -------------- \n")
+
+    print(datetime.now())
 
 def compare(prompt):
     pass

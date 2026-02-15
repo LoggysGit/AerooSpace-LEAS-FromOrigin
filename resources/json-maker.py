@@ -39,6 +39,8 @@ INSTRUCTIONS FOR OUTPUT:
  - Integration: If "spaceport" is NOT "custom", set S5 to 100 (Safe Operations guaranteed) and ignore slope_degree in S4 (Infrastructure pre-aligned).
  - Strict tresholds: Do not interpret values above the Redline as 'marginal' or 'risky' if they comfortably exceed the limit (e.g., visibility > 10,000m is ideal, not marginal)."
  - Missing data: If any telemetry is null or missing, you MUST set the affected sub-index to 0, flag it in the review and verdict as [MISSING_DATA: PARAMETER_NAME] in ALL CAPS, and explicitly state in the verdict that the final LCS is zeroed due to this specific data gap.
+ - !DETERMINISTIC RULE: If R1, R2, and R3 are PASS, you are FORBIDDEN from zeroing the LCS manually. The final score must strictly equal the mathematical result of the S1..S5 and R1..R3 formula.
+ - Data priority: Only missing PHYSICAL gates (Wind, Visibility, Pressure, Geomagnetic) result in LCS 0. Missing AQI or minor environmental data should only lower the S-score, not zero out the LCS.
  - JSON Format: You must return a JSON object with the key "ai_analytics" containing:
 "ai_analytics": {
   "review": "Detailed technical analysis of the site(s). Cover orbital mechanics, geographical benefits, and atmospheric conditions.",

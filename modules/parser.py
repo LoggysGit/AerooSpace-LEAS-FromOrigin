@@ -571,6 +571,7 @@ class DataControlManager:
                         h_s = res[2]['elevation'] # S
                         h_e = res[3]['elevation'] # E
                         h_w = res[4]['elevation'] # W
+                        h_c, h_n, h_s, h_e, h_w = [h if h is not None else 0.0 for h in [h_c, h_n, h_s, h_e, h_w]]
 
                         # Calculate gradients
                         dist = m * 2 # 2 * delta (m)

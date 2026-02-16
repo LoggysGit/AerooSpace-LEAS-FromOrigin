@@ -357,11 +357,6 @@ class AerooSpaceApp(QWidget):
         self.history_layout.setAlignment(Qt.AlignTop)
         self.history_layout.setSpacing(10)
 
-        # Тестовые данные в историю
-        self.history_layout.addWidget(HistoryItem("Almaty Intl (UAAA)", "Feb 14, 2026 • 10:52 • PR: Successful"))
-        self.history_layout.addWidget(HistoryItem("Dubai Intl (OMDB)", "Feb 13, 2026 • 22:15 • PR: Warning"))
-        self.history_layout.addWidget(HistoryItem("Baikonur (UAON)", "Feb 10, 2026 • 09:00 • PR: Critical"))
-
         self.scroll.setWidget(self.scroll_content)
         right_panel_layout.addWidget(self.scroll)
 
@@ -371,6 +366,15 @@ class AerooSpaceApp(QWidget):
         # ADD BOTH TO A MAIN LAYOUT
         main_layout.addLayout(analytics_block, 1)
         main_layout.addLayout(right_container, 1)
+
+    def init_analytics_window(self, analytics_name):
+        self.setWindowTitle(f"AerooSpace LEAS - Analytics")
+        self.resize(1100, 700)
+        self.setStyleSheet(STYLE_SHEET)
+
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(40)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

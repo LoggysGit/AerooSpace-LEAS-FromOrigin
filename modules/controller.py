@@ -6,7 +6,7 @@ class AIModel:
         self.llm = Llama(
             model_path=model_path,
             n_gpu_layers=8,  # Offload layers
-            n_ctx=16384,       # Context window
+            n_ctx=32768,       # Context window
             verbose=False     # Disable logs for clean output
         )
         self.role = role
@@ -45,7 +45,7 @@ class AIModel:
     def _generate(self, messages):
         output = self.llm.create_chat_completion(
             messages=messages,
-            temperature=0.1,
-            max_tokens=4096
+            temperature=0.01,
+            max_tokens=2048
         )
         return output['choices'][0]['message']['content']

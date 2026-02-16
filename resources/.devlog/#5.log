@@ -44,4 +44,4 @@ json\n{\n  "ai_analytics": {\n    "review": "The launch site at Singapore-Singap
 Note:
     STRICTLY define borders for redlines
     Set limits and "perfect" parameters
-    Decrease model temperature to 0.1
+    Decrease model temperature to 0.05

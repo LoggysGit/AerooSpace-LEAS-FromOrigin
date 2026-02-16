@@ -20,7 +20,7 @@ PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
 HISTORY_WINDOW_YEARS = 5
-SPACETRACK_LIMIT = 10
+SPACETRACK_LIMIT = 20
 # - Keys -
 NASA_KEY = os.getenv("NASA_API_KEY")
 SPACETRACK_LOGIN = os.getenv("SPACETRACK_USER")
@@ -636,6 +636,34 @@ class DataControlManager:
         except Exception as e:
             print(f"[X] Calculation Error: {e}")
 
+    def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef):
+        s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
+        s2 = max(0, 33 - max_wind_speed) * 3
+        s3 = (100 * math.exp(-0.15 * kp)) - xray
+        s4 = 100 * math.cos(latitude_rad) + (height_msl / 500) - (20 * max(0, slope_degree - 2))
+        s5 = max(0, 100 - (50 * s5_coef))
+        r1 = 1 if max_wind_speed < 30 else 0
+        r2 = 1 if kp < 7 else 0
+        r3 = 1 if visibility > 4000 else 0
+        lcs = (0.35 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.1 * s5) * r1 * r2 * r3
+        # ! NEED TO ELIMINATE NEGATIVE Si VALUES
+        return f"""
+CALCULATION:
+1. S1 = [100 - (abs(1013.25 - {pressure_surf}) / 2)] * 0.4 + [min(100, {visibility} / 100)] * 0.3 + [(100 * (1 - {cloud_cover}/100)) * (1 - 0.5 * (int({min_wind_temp} < -10) + int({avg_humidity}/100 > 0.7)))] * 0.3 = {s1}
+2. S2 = max(0, 33 - {max_wind_speed}) * 3 = {s2}
+3. S3 = (100 * exp(-0.15 * {kp})) - {xray} = {s3}
+4. S4 = 100 * cos({latitude_rad}) + ({height_msl} / 500) - (20 * max(0, {slope_degree} - 2)) = {s4}
+5. S5 = max(0, 100 - (50 * {s5_coef})) = {s5}
+6. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
+7. LCS = (0.35 * {s1} + 0.25 * {s2} + 0.15 * {s3} + 0.15 * {s4} + 0.1 * {s5}) * {r1} * {r2} * {r3} = {lcs}
+ => LCS IS {lcs} <=
+"""
+
+    def form_lcs(self):
+        # ! Get values from self.data
+        # ! Calculate other
+        return self.getLCS()
+
     # ================================== MAIN FETCH ====================================
     async def fetchAllData(self):
         lat, lon = self.input_data["coordinates"]
@@ -683,11 +711,14 @@ USER'S INPUT:
 {json.dumps(self.input_data)}
 ---------------------------------------
 HISTORY_WINDOW_YEARS = {HISTORY_WINDOW_YEARS}
-
+===================
 {prompts["sow"]}
 ---------------------------------------
 FETCHED DATA:
 {json.dumps(self.data)}
+---------------------------------------
+{prompts["formula_explanation"]}
+{self.form_lcs()}
 ---------------------------------------
 {prompts["output_format"]}
         '''

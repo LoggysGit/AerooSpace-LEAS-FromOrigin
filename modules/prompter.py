@@ -26,21 +26,21 @@ def getComparsionPrompt(inputs, data, analytics):
 inps = [
     {
         "spaceport": "custom",
-        "coordinates": [71.6872, 128.8536],
-        "target_timestamp": "2026-02-21T12:00:00Z",
-        "timezone": "UTC+0"
+        "coordinates": [35.2458, 139.1023], 
+        "target_timestamp": "2026-03-01T10:00:00Z",
+        "timezone": "UTC+9",
     },
     {
         "spaceport": "custom",
-        "coordinates": [-16.5000, -68.1193],
-        "target_timestamp": "2026-02-22T12:00:00Z",
-        "timezone": "UTC+0"
+        "coordinates": [-23.0008, -43.3547],
+        "target_timestamp": "2026-03-05T15:00:00Z",
+        "timezone": "UTC-3",
     },
     {
         "spaceport": "custom",
-        "coordinates": [1.3521, 103.8198],
-        "target_timestamp": "2026-01-25T12:00:00Z",
-        "timezone": "UTC+0"
+        "coordinates": [28.5721, -80.6480], 
+        "target_timestamp": "2026-03-10T12:00:00Z",
+        "timezone": "UTC-5",
     }
 ]
 
@@ -60,11 +60,15 @@ async def analyseAllPoints(inputs):
         comp_prompt = getComparsionPrompt(inputs, fetched, analytics)
 
     print(fetched)
-    print("\n -------------------------------------------------------------------------------- \n")
+    print("\n ----------------------------------- A -------------------------------------- \n")
     print(analytics)
-    print("\n -------------- \n")
+    print("\n ---------------------------------------------------------------------------- \n")
 
     print(datetime.now())
+    for item in analytics:
+        clean_text = item.replace("```json", "").replace("```", "").strip()
+        print(clean_text)
+        print("-" * 50)
 
 def compare(prompt):
     pass

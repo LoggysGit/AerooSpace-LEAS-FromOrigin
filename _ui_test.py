@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
                              QFrame, QLabel, QComboBox, QLineEdit, QPushButton, 
-                             QScrollArea, QSpacerItem, QSizePolicy, QStackedWidget)
+                             QScrollArea, QSpacerItem, QSizePolicy, QStackedWidget, QTextEdit)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon, QColor, QIntValidator
 from PySide6.QtCore import Qt, QSize
 
@@ -94,14 +94,38 @@ class HistoryItem(QFrame):
         
         layout.addLayout(text_layout)
         layout.addStretch()
-        
-        # Кнопки управления (заглушки)
+
         for icon_text in ["🔄", "🗑️"]:
             btn = QPushButton(icon_text)
             btn.setFixedSize(30, 30)
             btn.setStyleSheet("background: #333; font-size: 14px;")
             layout.addWidget(btn)
 
+class AnalyticsWindow(QWidget):
+    def __init__(self, analytics_data):
+        super().__init__()
+        self.data = analytics_data
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("AerooSpace LEAS - Detailed Analysis")
+        self.resize(1100, 700)
+        self.setStyleSheet(STYLE_SHEET)
+
+        layout = QVBoxLayout(self)
+
+        header = QLabel("Analysis Results")
+        header.setObjectName("Header")
+        layout.addWidget(header)
+
+        self.result_view = QTextEdit()
+        self.result_view.setReadOnly(True)
+        self.result_view.setText(str(self.data))
+        layout.addWidget(self.result_view)
+
+        btn_back = QPushButton("Back to Setup")
+        btn_back.clicked.connect(self.close)
+        layout.addWidget(btn_back)
 
 class AerooSpaceApp(QWidget):
     def __init__(self):
@@ -155,7 +179,7 @@ class AerooSpaceApp(QWidget):
         """)
         container_layout.addWidget(line)
 
-    def setup_analytics_ui(self, parent_layout, point_id):
+    def setup_input_ui(self, parent_layout, point_id):
         point_container = QWidget()
         point_container.setObjectName(f"point_{point_id}")
         container_layout = QVBoxLayout(point_container)
@@ -263,7 +287,7 @@ class AerooSpaceApp(QWidget):
         if self.points_count < 3:
             self.points_count += 1
 
-            self.setup_analytics_ui(self.points_layout, self.points_count)
+            self.setup_input_ui(self.points_layout, self.points_count)
 
             if self.points_count >= 3: self.btn_add.hide()
             #else: self.btn_add.show()
@@ -273,11 +297,13 @@ class AerooSpaceApp(QWidget):
         self.points_count -= 1
         if self.points_count < 3: self.btn_add.show()
 
-    def start_analysing():
-        pass
+    def show_analytics_window(self):
+        #input_data = self.collect_points_data() 
+        self.analytics_window = AnalyticsWindow("{\nData\n}")
+        self.analytics_window.show()
 
-    def setup_point_layout(self, parent_layout):
-        pass
+    def start_analysing(self):
+        self.show_analytics_window()
 
     def init_ui(self):
         self.setWindowTitle("AerooSpace LEAS")
@@ -333,6 +359,8 @@ class AerooSpaceApp(QWidget):
         btn_analyse = QPushButton("Analyse")
         btn_analyse.setObjectName("AnalyseBtn")
         btn_analyse.setCursor(Qt.PointingHandCursor)
+        btn_analyse.clicked.connect(self.show_analytics_window)
+
         analytics_block_layout.addWidget(btn_analyse)
         analytics_block_layout.addStretch()
 

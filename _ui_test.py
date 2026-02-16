@@ -395,15 +395,6 @@ class AerooSpaceApp(QWidget):
         main_layout.addLayout(analytics_block, 1)
         main_layout.addLayout(right_container, 1)
 
-    def init_analytics_window(self, analytics_name):
-        self.setWindowTitle(f"AerooSpace LEAS - Analytics")
-        self.resize(1100, 700)
-        self.setStyleSheet(STYLE_SHEET)
-
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(40)
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = AerooSpaceApp()

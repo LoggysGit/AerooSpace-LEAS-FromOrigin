@@ -340,42 +340,37 @@ class DataControlManager:
     # -------------- STRATEGIC FUNCTIONS --------------
 
     async def getWeatherNormal(self, lat, lon, target_time):
-        all_history = []
-
-        print(f"[*] Calculating weather normal...")
+        all_history_points = []
+        print(f"[*] Fetching historical context for {HISTORY_WINDOW_YEARS} years...")
         async with httpx.AsyncClient() as client:
             for i in range(1, HISTORY_WINDOW_YEARS + 1):
+                # 3-day window around the same date in past years
                 past_year = target_time.year - i
-                # 3-Day Bias from target data
                 start_d = (target_time - timedelta(days=1)).replace(year=past_year).strftime("%Y-%m-%d")
                 end_d = (target_time + timedelta(days=1)).replace(year=past_year).strftime("%Y-%m-%d")
-
                 url = (
                     f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}"
                     f"&start_date={start_d}&end_date={end_d}"
-                    f"&hourly=temperature_2m,surface_pressure,wind_speed_10m,cloud_cover"
+                    f"&hourly=temperature_2m,surface_pressure,cloud_cover,relative_humidity_2m"
                 )
-
                 try:
-                    resp = await client.get(url)
+                    resp = await client.get(url, timeout=10.0)
                     if resp.status_code == 200:
                         h = resp.json().get("hourly", {})
-                        all_history.append(h)
-                except Exception as e:
-                    print(f"[!] Archive fetch error for year {past_year}: {e}")
-
-        # Average
-        if all_history:
-            avg_temp = sum([sum(y['temperature_2m'])/len(y['temperature_2m']) for y in all_history]) / len(all_history)
-            avg_clouds = sum([sum(y['cloud_cover'])/len(y['cloud_cover']) for y in all_history]) / len(all_history)
-            avg_press = sum([sum(y['surface_pressure'])/len(y['surface_pressure']) for y in all_history]) / len(all_history)
-
-            self.data["weather_summary"]["weather_normal"] = {
-                "temp_norm": round(avg_temp, 1),
-                "cloud_norm": round(avg_clouds, 0),
-                "pressure_norm": round(avg_press, 1)
-            }
-            print(f"[V] Weather normal calculated based on {HISTORY_WINDOW_YEARS} years of history.")
+                        if h:
+                            # Average the values over the 3 days
+                            year_stat = {
+                                "year": past_year,
+                                "temperature": round(sum(h['temperature_2m'])/len(h['temperature_2m']), 1),
+                                "pressure": round(sum(h['surface_pressure'])/len(h['surface_pressure']), 1),
+                                "cloud_cover": round(sum(h['cloud_cover'])/len(h['cloud_cover']), 0),
+                                "humidity": round(sum(h['relative_humidity_2m'])/len(h['relative_humidity_2m']), 0)
+                            }
+                            all_history_points.append(year_stat)
+                            print(f"[>V] Year {past_year} data loaded.")
+                except Exception as e: print(f"[>!] Year {past_year} fetch error: {e}")
+        self.data["weather_summary"]["weather_normal"] = all_history_points
+        print(f"[V] Loaded {len(all_history_points)} historical data points.")
 
     async def getAQITrends(self, target_time):
         date_str = target_time.strftime("%Y-%m-%d")
@@ -448,7 +443,8 @@ class DataControlManager:
                         trends.append({
                             "year": start_dt.year,
                             "flare_count": count,
-                            "peak_class": strongest
+                            "peak_class": strongest,
+                            "flares": flares
                         })
                     else: print(f">[!] NASA DONKI API Error for year {start_dt.year}: {resp.status_code}")
 
@@ -639,20 +635,18 @@ class DataControlManager:
     def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere, debris_count):
         s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
         s2 = max(0, 33 - max_wind_speed) * 3 #
-        s3 = (100 * math.exp(-0.15 * kp)) - xray
+        s3 = (100 * math.exp(-0.15 * kp)) - xray #
         s4 = 100 * math.cos(latitude_rad) + (height_msl / 500) - (20 * max(0, slope_degree - 2))
         s5 = max(0, 100 - (50 * s5_coef))
-        s6 = 0
         s1 = s1 if s1 >= 0 else 0
         s2 = s2 if s2 >= 0 else 0
         s3 = s3 if s3 >= 0 else 0
         s4 = s4 if s4 >= 0 else 0
         s5 = s5 if s5 >= 0 else 0
-        s6 = s6 if s6 >= 0 else 0
         r1 = 1 if max_wind_speed < 30 else 0
         r2 = 1 if kp < 7 else 0
         r3 = 1 if visibility > 4000 else 0
-        lcs = (0.3 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.05 * s5 + 0.1 * s6) * r1 * r2 * r3
+        lcs = round((0.35 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.1 * s5) * r1 * r2 * r3, 2)
         return f"""
 CALCULATION:
 1. S1 = [100 - (abs(1013.25 - {pressure_surf}) / 2)] * 0.4 + [min(100, {visibility} / 100)] * 0.3 + [(100 * (1 - {cloud_cover}/100)) * (1 - 0.5 * (int({min_wind_temp} < -10) + int({avg_humidity}/100 > 0.7)))] * 0.3 = {s1}
@@ -660,9 +654,8 @@ CALCULATION:
 3. S3 = (100 * exp(-0.15 * {kp})) - {xray} = {s3}
 4. S4 = 100 * cos({latitude_rad}) + ({height_msl} / 500) - (20 * max(0, {slope_degree} - 2)) = {s4}
 5. S5 = max(0, 100 - (50 * {s5_coef})) = {s5}
-6. S6 = = {s6}
-7. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
-8. LCS = (0.3 * {s1} + 0.25 * {s2} + 0.15 * {s3} + 0.15 * {s4} + 0.05 * {s5} + 0.1 * {s6}) * {r1} * {r2} * {r3} = {lcs}
+6. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
+7. LCS = (0.35 * {s1} + 0.25 * {s2} + 0.15 * {s3} + 0.15 * {s4} + 0.1 * {s5}) * {r1} * {r2} * {r3} = {lcs}
  => LCS IS {lcs} <=
 """
 
@@ -731,6 +724,14 @@ CALCULATION:
         await self.parseFlights(lat, lon)
 
     def predictAll(self):
+        # Pressure, Cloud cover, Humidity, Temperature 
+
+        # Winds
+
+        # AQI
+
+        # DONKI
+
         pass
     # ================================== OUTPUT FUNCTIONS ==================================
 

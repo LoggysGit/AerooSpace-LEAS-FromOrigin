@@ -34,9 +34,9 @@ Data is categorized into three temporal layers:
     "cloud_cover": int,            // Total cloud cover percentage (%) (request time).
     "visibility": int,             // Meteorological visibility in meters (request time).
     "forecast_7d": [int],          // 7-day weather forecast starting from request time (WMO weather codes).
-    "weather_normal": {            // Climate normals (averages) for this location and date over A-years.
+    "weather_normal": [            // Climate normals (averages) for this location and date over A-years.
         ###
-    }
+    ]
   },
   "space_environment": {
     "kp_index_now": int,           // Planetary K-index (geomagnetic activity) at request time.

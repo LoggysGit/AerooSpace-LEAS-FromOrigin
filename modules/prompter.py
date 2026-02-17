@@ -15,9 +15,13 @@ ai = model.AIModel(MODEL_PATH)
 data_fetcher = fetcher.DataControlManager()
 
 async def getPrompt(spaceport, lat, lon, datetime, timezone):
+    # Set & Fetch
     data_fetcher.setInput(spaceport, lat, lon, datetime, timezone)
     await data_fetcher.fetchAllData()
-    full_prompt = data_fetcher.getSinglePrompt()
+    # Predict
+
+    # Get Full Prompt
+    full_prompt = data_fetcher.getEstimatingPrompt()
     return full_prompt
 
 def getComparsionPrompt(inputs, data, analytics):
@@ -53,6 +57,8 @@ async def analyseAllPoints(inputs):
         print(" ========== STARTING POINT ANALYSIS... ========== ")
         prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
         fetched.append(data_fetcher.getFetchedData())
+        # Predicting
+
         review = await ai.analyze(prompt)
         analytics.append(review)
 

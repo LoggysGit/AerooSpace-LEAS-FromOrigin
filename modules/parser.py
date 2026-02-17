@@ -444,7 +444,14 @@ class DataControlManager:
                             "year": start_dt.year,
                             "flare_count": count,
                             "peak_class": strongest,
-                            "flares": flares
+                            "flares": [
+                                {
+                                    "peak_time": f["peakTime"],
+                                    "class": f["classType"],
+                                    "location": f["sourceLocation"],
+                                    "region": f["activeRegionNum"]
+                                } 
+                                for f in flares]
                         })
                     else: print(f">[!] NASA DONKI API Error for year {start_dt.year}: {resp.status_code}")
 
@@ -634,8 +641,8 @@ class DataControlManager:
 
     def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere, debris_count):
         s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
-        s2 = max(0, 33 - max_wind_speed) * 3 #
-        s3 = (100 * math.exp(-0.15 * kp)) - xray #
+        s2 = max(0, 33 - max_wind_speed) * 3 # wind cos
+        s3 = (100 * math.exp(-0.15 * kp)) - xray # magnetosphere, debris
         s4 = 100 * math.cos(latitude_rad) + (height_msl / 500) - (20 * max(0, slope_degree - 2))
         s5 = max(0, 100 - (50 * s5_coef))
         s1 = s1 if s1 >= 0 else 0
@@ -676,18 +683,22 @@ CALCULATION:
         xray = self.data["space_environment"]["xray_flux_now"] or "A0.0"
         xray_map = {'X': 80, 'M': 30, 'C': 5, 'B': 1, 'A': 0}
         xray_value = xray_map.get(xray[0], 0) if xray else 0
+        # Debris
+        debris_count = len(self.data["space_environment"]["objects_predicted"])
+        # Mgsph
+        magn = self.data["space_environment"]["mag_declination_pr"]
         # Surface
         latitude_rad = math.radians(self.input_data["coordinates"][0])
         height_msl = self.data["surface"]["height_msl"] or 0
         slope_degree = self.data["surface"]["slope_degree"] or 0
         if self.input_data["spaceport"] != "custom": slope_degree = 0
-        # Coefficient for terrain type
+        # Coefficient for terrain type !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         s5_coef = 0
         if self.data["surface"]["terrain_type"] == "Sea Level": s5_coef = 0
         elif self.data["surface"]["terrain_type"] == "Flat Plain": s5_coef = 0.5
         else: s5_coef = 1
 
-        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef)
+        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef, magn, debris_count)
 
     # ================================== MAIN ====================================
     async def fetchAllData(self):
@@ -723,27 +734,70 @@ CALCULATION:
         # Flights
         await self.parseFlights(lat, lon)
 
-    def predictAll(self):
+    def predictMath(self): # === ??????????????????
         # Pressure, Cloud cover, Humidity, Temperature 
-
+        pressures = self.data["weather_summary"]["weather_normal"]
+        temperatures = self.data["weather_summary"]["weather_normal"]
+        humidities = self.data["weather_summary"]["weather_normal"]
+        cloud_datas = self.data["weather_summary"]["weather_normal"]
         # Winds
 
         # AQI
 
         # DONKI
 
-        pass
+        # Flights
+
+        # Visibility
+        return {
+            "presssure_pr": 0,
+            "visibility_pr": 0,
+            "cloud_cover_pr": 0,
+            "humidity_pr": 0,
+            "temperature_pr": 0,
+            "flare_pr": 0,
+            "aqi_pr": 0,
+            "wind_speed": 0,
+            "kp_pr": 0,
+            "wind_degrees": [], # [10, 23, 45, 90, .(5)., 120]
+            "magnetosphere_pr": 0,
+            "space_objects_pr": []
+        }
     # ================================== OUTPUT FUNCTIONS ==================================
 
-    def getFetchedData(self): return self.input_data, self.data
+    def getFetchedData(self): return self.data
 
     def getLCSReport(self): return self.form_lcs()
 
     def getPredictionPrompt(self):
-        return f'''
-'''
+        return f"""
+YOU HAVE:
+{{
+    "aqi_trends": {self},
+    "donki_trends": {self},
+    "": {self},
+    "": {self},
+    "": {self},
+    "": {self},
+}}
+YOU MUST RETURN:
+{{
+    "presssure_pr": 0,
+    "visibility_pr": 0,
+    "cloud_cover_pr": 0,
+    "humidity_pr": 0,
+    "temperature_pr": 0,
+    "flare_pr": 0,
+    "aqi_pr": 0,
+    "wind_speed": 0,
+    "kp_pr": 0,
+    "wind_degrees": [], # [10, 23, 45, 90, .(5)., 120]
+    "magnetosphere_pr": 0,
+    "space_objects_pr": []
+}}
+"""
 
-    def getSinglePrompt(self):
+    def getEstimatingPrompt(self):
         with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
         overall_prompt = f'''
 {prompts["main_prompt"]}
@@ -757,6 +811,9 @@ HISTORY_WINDOW_YEARS = {HISTORY_WINDOW_YEARS}
 ---------------------------------------
 FETCHED DATA:
 {json.dumps(self.data)}
+---------------------------------------
+PREDICTED PARAMETERS:
+{0}
 ---------------------------------------
 {prompts["formula_explanation"]}
 {self.form_lcs()}

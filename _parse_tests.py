@@ -16,8 +16,9 @@ data_fetcher = fetcher.DataControlManager()
 async def getPrompt(spaceport, lat, lon, datetime, timezone):
     data_fetcher.setInput(spaceport, lat, lon, datetime, timezone)
     await data_fetcher.fetchAllData()
-    full_prompt = data_fetcher.getLCSReport()
+    full_prompt = data_fetcher.getFetchedData()
     return full_prompt
 
 prompt = asyncio.run(getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"]))
-print(prompt)
+with open("test.txt", "w", encoding="utf-8") as f: f.write(json.dumps(prompt, indent=4, ensure_ascii=False))
+print(json.dumps(prompt, indent=4, ensure_ascii=False))

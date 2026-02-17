@@ -51,7 +51,7 @@ async def analyseAllPoints(inputs):
     fetched, analytics = [], []
     for input in inputs:
         print(" ========== STARTING POINT ANALYSIS... ========== ")
-        prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"],)
+        prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
         fetched.append(data_fetcher.getFetchedData())
         review = await ai.analyze(prompt)
         analytics.append(review)

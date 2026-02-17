@@ -636,17 +636,23 @@ class DataControlManager:
         except Exception as e:
             print(f"[X] Calculation Error: {e}")
 
-    def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef):
+    def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere, debris_count):
         s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
-        s2 = max(0, 33 - max_wind_speed) * 3
+        s2 = max(0, 33 - max_wind_speed) * 3 #
         s3 = (100 * math.exp(-0.15 * kp)) - xray
         s4 = 100 * math.cos(latitude_rad) + (height_msl / 500) - (20 * max(0, slope_degree - 2))
         s5 = max(0, 100 - (50 * s5_coef))
+        s6 = 0
+        s1 = s1 if s1 >= 0 else 0
+        s2 = s2 if s2 >= 0 else 0
+        s3 = s3 if s3 >= 0 else 0
+        s4 = s4 if s4 >= 0 else 0
+        s5 = s5 if s5 >= 0 else 0
+        s6 = s6 if s6 >= 0 else 0
         r1 = 1 if max_wind_speed < 30 else 0
         r2 = 1 if kp < 7 else 0
         r3 = 1 if visibility > 4000 else 0
-        lcs = (0.35 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.1 * s5) * r1 * r2 * r3
-        # ! NEED TO ELIMINATE NEGATIVE Si VALUES
+        lcs = (0.3 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.05 * s5 + 0.1 * s6) * r1 * r2 * r3
         return f"""
 CALCULATION:
 1. S1 = [100 - (abs(1013.25 - {pressure_surf}) / 2)] * 0.4 + [min(100, {visibility} / 100)] * 0.3 + [(100 * (1 - {cloud_cover}/100)) * (1 - 0.5 * (int({min_wind_temp} < -10) + int({avg_humidity}/100 > 0.7)))] * 0.3 = {s1}
@@ -654,17 +660,43 @@ CALCULATION:
 3. S3 = (100 * exp(-0.15 * {kp})) - {xray} = {s3}
 4. S4 = 100 * cos({latitude_rad}) + ({height_msl} / 500) - (20 * max(0, {slope_degree} - 2)) = {s4}
 5. S5 = max(0, 100 - (50 * {s5_coef})) = {s5}
-6. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
-7. LCS = (0.35 * {s1} + 0.25 * {s2} + 0.15 * {s3} + 0.15 * {s4} + 0.1 * {s5}) * {r1} * {r2} * {r3} = {lcs}
+6. S6 = = {s6}
+7. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
+8. LCS = (0.3 * {s1} + 0.25 * {s2} + 0.15 * {s3} + 0.15 * {s4} + 0.05 * {s5} + 0.1 * {s6}) * {r1} * {r2} * {r3} = {lcs}
  => LCS IS {lcs} <=
 """
 
     def form_lcs(self):
-        # ! Get values from self.data
-        # ! Calculate other
-        return self.getLCS()
+        # Main (S1)
+        press = self.data["weather_summary"]["pressure_surface"] or 1013.25
+        vis = self.data["weather_summary"]["visibility"] or 3000
+        clouds = self.data["weather_summary"]["cloud_cover"] or 0
+        # Winds
+        wind_profile = self.data["wind_profile_now"] or [[0, 0, 0, 15]] # Default: [Altitude, Speed, Direction, Temp]
+        min_wind_temp = min([w[3] for w in wind_profile]) if wind_profile else 15
+        max_wind_speed = max([w[1] for w in wind_profile]) if wind_profile else 0
+        # Humidity
+        avg_humidity = self.data["weather_summary"]["average_humidity"] or 0
+        # KP
+        kp = self.data["space_environment"]["kp_index_now"] or 0
+        # Xray
+        xray = self.data["space_environment"]["xray_flux_now"] or "A0.0"
+        xray_map = {'X': 80, 'M': 30, 'C': 5, 'B': 1, 'A': 0}
+        xray_value = xray_map.get(xray[0], 0) if xray else 0
+        # Surface
+        latitude_rad = math.radians(self.input_data["coordinates"][0])
+        height_msl = self.data["surface"]["height_msl"] or 0
+        slope_degree = self.data["surface"]["slope_degree"] or 0
+        if self.input_data["spaceport"] != "custom": slope_degree = 0
+        # Coefficient for terrain type
+        s5_coef = 0
+        if self.data["surface"]["terrain_type"] == "Sea Level": s5_coef = 0
+        elif self.data["surface"]["terrain_type"] == "Flat Plain": s5_coef = 0.5
+        else: s5_coef = 1
 
-    # ================================== MAIN FETCH ====================================
+        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef)
+
+    # ================================== MAIN ====================================
     async def fetchAllData(self):
         lat, lon = self.input_data["coordinates"]
         target_time, tz = self.input_data["target_timestamp"], self.input_data["timezone"]
@@ -698,9 +730,17 @@ CALCULATION:
         # Flights
         await self.parseFlights(lat, lon)
 
+    def predictAll(self):
+        pass
     # ================================== OUTPUT FUNCTIONS ==================================
 
     def getFetchedData(self): return self.input_data, self.data
+
+    def getLCSReport(self): return self.form_lcs()
+
+    def getPredictionPrompt(self):
+        return f'''
+'''
 
     def getSinglePrompt(self):
         with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)

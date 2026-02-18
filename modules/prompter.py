@@ -24,6 +24,9 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     raw_ans = await ai.analyze(pr_prompt)
     clear_ans = raw_ans.replace("```json", "").replace("```", "").strip()
     data_fetcher.updatePredicted(clear_ans)
+    
+    print("============================================================")
+    print(json.dumps(clear_ans, indent=4, ensure_ascii=False))
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
     return full_prompt

@@ -1,0 +1,435 @@
+{
+    "location": {
+        "name": "Kazakhstan-Kyzylorda Region"
+    },
+    "wind_profile_now": [
+        [
+            100,
+            3.8,
+            182,
+            3.9
+        ],
+        [
+            750,
+            15.13,
+            221,
+            10.3
+        ],
+        [
+            1500,
+            14.78,
+            227,
+            8.6
+        ],
+        [
+            3000,
+            18.84,
+            237,
+            1.8
+        ],
+        [
+            5500,
+            24.78,
+            253,
+            -17.7
+        ],
+        [
+            9000,
+            35.03,
+            268,
+            -43.0
+        ],
+        [
+            10500,
+            36.1,
+            266,
+            -54.0
+        ],
+        [
+            16000,
+            27.2,
+            277,
+            -64.0
+        ],
+        [
+            20000,
+            20.18,
+            262,
+            -58.5
+        ],
+        [
+            31000,
+            21.01,
+            222,
+            -47.5
+        ]
+    ],
+    "aqi_now": {
+        "pm2_5": null,
+        "pm10": null,
+        "no2": null,
+        "so2": 25.9,
+        "o3": 0.1,
+        "co": 0.6
+    },
+    "aqi_trends": [
+        {
+            "date": "2025-02-27",
+            "content": {
+                "pm2_5": 10.9,
+                "pm10": 14.2,
+                "no2": 0.5,
+                "so2": 1.0,
+                "o3": 86.0,
+                "co": 200.0
+            }
+        },
+        {
+            "date": "2024-02-27",
+            "content": {
+                "pm2_5": 13.4,
+                "pm10": 20.5,
+                "no2": 0.4,
+                "so2": 2.5,
+                "o3": 78.0,
+                "co": 207.0
+            }
+        },
+        {
+            "date": "2023-02-27",
+            "content": {
+                "pm2_5": 8.8,
+                "pm10": 12.7,
+                "no2": 0.2,
+                "so2": 1.4,
+                "o3": 67.0,
+                "co": 148.0
+            }
+        },
+        {
+            "date": "2022-02-27",
+            "content": {
+                "pm2_5": null,
+                "pm10": null,
+                "no2": null,
+                "so2": null,
+                "o3": null,
+                "co": null
+            }
+        },
+        {
+            "date": "2021-02-27",
+            "content": {
+                "pm2_5": null,
+                "pm10": null,
+                "no2": null,
+                "so2": null,
+                "o3": null,
+                "co": null
+            }
+        }
+    ],
+    "weather_summary": {
+        "pressure_surface": 1000.9,
+        "average_humidity": 90,
+        "cloud_cover": 100,
+        "visibility": 24140.0,
+        "forecast_7d": [
+            45,
+            3,
+            80,
+            3,
+            3,
+            3,
+            3
+        ],
+        "weather_normal": [
+            {
+                "year": 2025,
+                "temperature": -3.9,
+                "pressure": 1010.7,
+                "cloud_cover": 82.0,
+                "humidity": 86.0
+            },
+            {
+                "year": 2024,
+                "temperature": -3.7,
+                "pressure": 1023.0,
+                "cloud_cover": 1.0,
+                "humidity": 55.0
+            },
+            {
+                "year": 2023,
+                "temperature": -0.8,
+                "pressure": 1019.0,
+                "cloud_cover": 68.0,
+                "humidity": 73.0
+            },
+            {
+                "year": 2022,
+                "temperature": 2.2,
+                "pressure": 1009.8,
+                "cloud_cover": 52.0,
+                "humidity": 76.0
+            },
+            {
+                "year": 2021,
+                "temperature": -4.5,
+                "pressure": 1009.2,
+                "cloud_cover": 90.0,
+                "humidity": 69.0
+            }
+        ]
+    },
+    "space_environment": {
+        "kp_index_now": 0,
+        "xray_flux_now": "A0.0",
+        "donki_trends": [
+            {
+                "year": 2025,
+                "flare_count": 12,
+                "peak_class": "M3.9",
+                "flares": [
+                    {
+                        "peak_time": "2025-02-24T01:46Z",
+                        "class": "M1.3",
+                        "location": "N24W88",
+                        "region": 14001
+                    },
+                    {
+                        "peak_time": "2025-02-24T07:02Z",
+                        "class": "M3.3",
+                        "location": "N17W21",
+                        "region": 14000
+                    },
+                    {
+                        "peak_time": "2025-02-24T21:01Z",
+                        "class": "M1.5",
+                        "location": "N17W30",
+                        "region": 14000
+                    },
+                    {
+                        "peak_time": "2025-02-24T23:02Z",
+                        "class": "M3.9",
+                        "location": "S13W120",
+                        "region": 13990
+                    },
+                    {
+                        "peak_time": "2025-02-25T02:47Z",
+                        "class": "M1.3",
+                        "location": "S10W43",
+                        "region": 13998
+                    },
+                    {
+                        "peak_time": "2025-02-25T11:59Z",
+                        "class": "M3.6",
+                        "location": "S15W55",
+                        "region": 13998
+                    },
+                    {
+                        "peak_time": "2025-02-26T22:47Z",
+                        "class": "C3.5",
+                        "location": "S16W86",
+                        "region": 13996
+                    },
+                    {
+                        "peak_time": "2025-02-28T16:28Z",
+                        "class": "C5.2",
+                        "location": "N18W02",
+                        "region": 14006
+                    },
+                    {
+                        "peak_time": "2025-03-01T23:01Z",
+                        "class": "C9.5",
+                        "location": "S26E90",
+                        "region": 14016
+                    },
+                    {
+                        "peak_time": "2025-03-02T03:50Z",
+                        "class": "C2.4",
+                        "location": "S18E58",
+                        "region": 14011
+                    },
+                    {
+                        "peak_time": "2025-03-02T05:57Z",
+                        "class": "C1.1",
+                        "location": "S18E57",
+                        "region": 14011
+                    },
+                    {
+                        "peak_time": "2025-03-02T09:38Z",
+                        "class": "C2.9",
+                        "location": "S18E54",
+                        "region": 14011
+                    }
+                ]
+            },
+            {
+                "year": 2024,
+                "flare_count": 7,
+                "peak_class": "M4.5",
+                "flares": [
+                    {
+                        "peak_time": "2024-02-24T06:34Z",
+                        "class": "M4.5",
+                        "location": "N18E09",
+                        "region": 13590
+                    },
+                    {
+                        "peak_time": "2024-02-24T10:57Z",
+                        "class": "M2.2",
+                        "location": "N12E05",
+                        "region": 13590
+                    },
+                    {
+                        "peak_time": "2024-02-24T11:18Z",
+                        "class": "M3.6",
+                        "location": "N18E05",
+                        "region": 13590
+                    },
+                    {
+                        "peak_time": "2024-02-24T11:59Z",
+                        "class": "M1.0",
+                        "location": "N18E20",
+                        "region": 13590
+                    },
+                    {
+                        "peak_time": "2024-02-25T17:22Z",
+                        "class": "M2.0",
+                        "location": "N18W10",
+                        "region": 13590
+                    },
+                    {
+                        "peak_time": "2024-02-28T09:09Z",
+                        "class": "C5.1",
+                        "location": "S16E31",
+                        "region": null
+                    },
+                    {
+                        "peak_time": "2024-02-28T18:54Z",
+                        "class": "M1.5",
+                        "location": "N19W59",
+                        "region": 13590
+                    }
+                ]
+            },
+            {
+                "year": 2023,
+                "flare_count": 8,
+                "peak_class": "M8.6",
+                "flares": [
+                    {
+                        "peak_time": "2023-02-24T17:15Z",
+                        "class": "M1.1",
+                        "location": "N20E01",
+                        "region": 13235
+                    },
+                    {
+                        "peak_time": "2023-02-24T20:30Z",
+                        "class": "M3.7",
+                        "location": "N27W25",
+                        "region": 13229
+                    },
+                    {
+                        "peak_time": "2023-02-25T15:40Z",
+                        "class": "M1.0",
+                        "location": "S28W04",
+                        "region": 13236
+                    },
+                    {
+                        "peak_time": "2023-02-25T19:44Z",
+                        "class": "M6.3",
+                        "location": "N25W42",
+                        "region": 13229
+                    },
+                    {
+                        "peak_time": "2023-02-28T17:50Z",
+                        "class": "M8.6",
+                        "location": "N28W30",
+                        "region": 13234
+                    },
+                    {
+                        "peak_time": "2023-03-01T01:07Z",
+                        "class": "M1.0",
+                        "location": "N26W33",
+                        "region": 13234
+                    },
+                    {
+                        "peak_time": "2023-03-02T04:50Z",
+                        "class": "C9.2",
+                        "location": "N20W55",
+                        "region": 13234
+                    },
+                    {
+                        "peak_time": "2023-03-02T21:16Z",
+                        "class": "M3.8",
+                        "location": "N20W65",
+                        "region": 13234
+                    }
+                ]
+            },
+            {
+                "year": 2022,
+                "flare_count": 4,
+                "peak_class": "M2.0",
+                "flares": [
+                    {
+                        "peak_time": "2022-02-28T08:37Z",
+                        "class": "C1.2",
+                        "location": "S25E65",
+                        "region": null
+                    },
+                    {
+                        "peak_time": "2022-02-28T09:17Z",
+                        "class": "C3.1",
+                        "location": "S25E65",
+                        "region": null
+                    },
+                    {
+                        "peak_time": "2022-03-02T09:42Z",
+                        "class": "C3.0",
+                        "location": "S16E31",
+                        "region": 12957
+                    },
+                    {
+                        "peak_time": "2022-03-02T17:39Z",
+                        "class": "M2.0",
+                        "location": "N16E27",
+                        "region": 12958
+                    }
+                ]
+            },
+            {
+                "year": 2021,
+                "flare_count": 1,
+                "peak_class": "B9.5",
+                "flares": [
+                    {
+                        "peak_time": "2021-02-26T07:25Z",
+                        "class": "B9.5",
+                        "location": "S23W43",
+                        "region": 12805
+                    }
+                ]
+            }
+        ],
+        "mag_declination_pr": 0,
+        "sun_pos_pr": [
+            162.14,
+            34.14
+        ],
+        "moon_pos_pr": [
+            34.17,
+            -10.29
+        ],
+        "objects_predicted": []
+    },
+    "surface": {
+        "height_msl": 135.0,
+        "slope_degree": 16.23,
+        "terrain_type": "Mountainous"
+    },
+    "aviation": {
+        "shedules_now": []
+    }
+}

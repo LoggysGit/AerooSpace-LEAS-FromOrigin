@@ -71,6 +71,8 @@ class DataControlManager:
         self.input_data["request_time"] = datetime.utcnow().isoformat() + "Z"
         self.input_data["timezone"] = utc_zone
 
+    def updatePredicted(self, parameters): self.predicted = parameters
+
     def utc_time(self, input_time, timezone):
         raw_offset = timezone.replace("UTC", "").strip()
         try: offset_hours = int(raw_offset)
@@ -84,7 +86,7 @@ class DataControlManager:
 
         return dt_utc
     
-    # = Data =
+    # = Data Structures =
     data = {
         "location": {
             "name": "-",              # From OSM - Country-City
@@ -119,6 +121,20 @@ class DataControlManager:
         }
     }
 
+    predicted = {
+    "pressure_pr": float,
+    "visibility_pr": int, # Base on pressure, temperature, cloud_cover, aqi and historical cloudiness
+    "cloud_cover_pr": int,
+    "humidity_pr": int,
+    "temperature_pr": float,
+    "flare_pr": float, # Probability 0-100 based on recent M/X flare frequency
+    "aqi_pr": float, # Predicted AQI
+    "avg_wind_speed_pr": float,
+    "max_wind_speed_pr": float,
+    "kp_pr": float,
+    "wind_degrees_pr": [], # 10 values for different altitudes
+    "prediction_confidence": int # Overall confidence in the prediction (0-100)%
+    }
     # ================================== API REQUESTS ==================================
 
     # -------------- OPERATIONAL FUNCTIONS --------------
@@ -625,12 +641,12 @@ class DataControlManager:
                 round(math.degrees(moon.alt), 2)
             ]
 
-            # --- WMM (2 Different calculation methods) ---
+            # --- WMM ---
             try:
                 gm = geomag.geomag.GeoMag() 
                 mag = gm.GeoMag(lat, lon, alt * 3.28084, time=target_utc_time.year + target_utc_time.month/12) # Alt in feet
                 dec = mag.dec
-            except: dec = geomag.declination(lat, lon, alt) 
+            except: dec = 0
 
             self.data["space_environment"]["mag_declination_pr"] = round(dec, 2)
 
@@ -639,26 +655,30 @@ class DataControlManager:
         except Exception as e:
             print(f"[X] Calculation Error: {e}")
 
-    def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere, debris_count):
+    def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere_bias, debris_count, wind_penalty, aqi):
         s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
-        s2 = max(0, 33 - max_wind_speed) * 3 # wind cos
-        s3 = (100 * math.exp(-0.15 * kp)) - xray # magnetosphere, debris
+        s2 = ((33 - max_wind_speed) * 3) - wind_penalty - (aqi/15)
+        s3 = (100 * math.exp(-0.15 * kp)) - xray - debris_count*2 - abs(magnetosphere_bias)
         s4 = 100 * math.cos(latitude_rad) + (height_msl / 500) - (20 * max(0, slope_degree - 2))
-        s5 = max(0, 100 - (50 * s5_coef))
+        s5 = 100 - (50 * s5_coef)
+
         s1 = s1 if s1 >= 0 else 0
         s2 = s2 if s2 >= 0 else 0
         s3 = s3 if s3 >= 0 else 0
         s4 = s4 if s4 >= 0 else 0
         s5 = s5 if s5 >= 0 else 0
+
         r1 = 1 if max_wind_speed < 30 else 0
         r2 = 1 if kp < 7 else 0
         r3 = 1 if visibility > 4000 else 0
+
         lcs = round((0.35 * s1 + 0.25 * s2 + 0.15 * s3 + 0.15 * s4 + 0.1 * s5) * r1 * r2 * r3, 2)
         return f"""
 CALCULATION:
+(Si MINIMUM = 0)
 1. S1 = [100 - (abs(1013.25 - {pressure_surf}) / 2)] * 0.4 + [min(100, {visibility} / 100)] * 0.3 + [(100 * (1 - {cloud_cover}/100)) * (1 - 0.5 * (int({min_wind_temp} < -10) + int({avg_humidity}/100 > 0.7)))] * 0.3 = {s1}
-2. S2 = max(0, 33 - {max_wind_speed}) * 3 = {s2}
-3. S3 = (100 * exp(-0.15 * {kp})) - {xray} = {s3}
+2. S2 = (33 - {max_wind_speed}) * 3 - {wind_penalty} - {aqi} / 15 = {s2}
+3. S3 = (100 * exp(-0.15 * {kp})) - {xray} - {debris_count}*2 - abs({magnetosphere_bias}) = {s3}
 4. S4 = 100 * cos({latitude_rad}) + ({height_msl} / 500) - (20 * max(0, {slope_degree} - 2)) = {s4}
 5. S5 = max(0, 100 - (50 * {s5_coef})) = {s5}
 6. R1 = {max_wind_speed} < 30 = {r1}; R2 = {kp} < 7 = {r2}; R3 = {visibility} > 4000 = {r3}
@@ -666,41 +686,47 @@ CALCULATION:
  => LCS IS {lcs} <=
 """
 
-    def form_lcs(self):
+    def form_lcs(self, data):
         # Main (S1)
-        press = self.data["weather_summary"]["pressure_surface"] or 1013.25
-        vis = self.data["weather_summary"]["visibility"] or 3000
-        clouds = self.data["weather_summary"]["cloud_cover"] or 0
+        press = data["pressure_pr"] or 1013.25
+        vis = data["visibility_pr"] or 3000
+        clouds = data["cloud_cover_pr"] or 0
+        # AQI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+        aqi_value = 0
         # Winds
-        wind_profile = self.data["wind_profile_now"] or [[0, 0, 0, 15]] # Default: [Altitude, Speed, Direction, Temp]
-        min_wind_temp = min([w[3] for w in wind_profile]) if wind_profile else 15
-        max_wind_speed = max([w[1] for w in wind_profile]) if wind_profile else 0
+        min_wind_temp = data["min_wind_temp_pr"] or 0
+        max_wind_speed = data["max_wind_speed_pr"] or 0
+        wind_penalty = 0
+        for di in range(1, data["wind_degrees_pr"] + 1):
+            theta_delta = abs(data["wind_degrees_pr"][di - 1] - data["wind_degrees_pr"][0])
+            act = 1 if theta_delta < 45 else 0
+            penalty = (0.7  - math.cos(math.radians(theta_delta))) * data["avg_wind_speed_pr"] * act
+            wind_penalty += penalty
         # Humidity
-        avg_humidity = self.data["weather_summary"]["average_humidity"] or 0
+        avg_humidity = data["humidity_pr"] or 0
         # KP
-        kp = self.data["space_environment"]["kp_index_now"] or 0
+        kp = data["kp_pr"] or 0
         # Xray
-        xray = self.data["space_environment"]["xray_flux_now"] or "A0.0"
+        xray = data["flare_pr"] or "A0.0"
         xray_map = {'X': 80, 'M': 30, 'C': 5, 'B': 1, 'A': 0}
         xray_value = xray_map.get(xray[0], 0) if xray else 0
         # Debris
-        debris_count = len(self.data["space_environment"]["objects_predicted"])
-        # Mgsph
-        magn = self.data["space_environment"]["mag_declination_pr"]
+        debris_count = len(data["space_environment"]["objects_predicted"])
+        # Mgsph !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        magn = 0
         # Surface
-        latitude_rad = math.radians(self.input_data["coordinates"][0])
-        height_msl = self.data["surface"]["height_msl"] or 0
-        slope_degree = self.data["surface"]["slope_degree"] or 0
-        if self.input_data["spaceport"] != "custom": slope_degree = 0
+        latitude_rad = math.radians(data["coordinates"][0])
+        height_msl = data["surface"]["height_msl"] or 0
+        slope_degree = data["surface"]["slope_degree"] or 0
+        if data["spaceport"] != "custom": slope_degree = 0
         # Coefficient for terrain type !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         s5_coef = 0
-        if self.data["surface"]["terrain_type"] == "Sea Level": s5_coef = 0
-        elif self.data["surface"]["terrain_type"] == "Flat Plain": s5_coef = 0.5
-        else: s5_coef = 1
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef, magn, debris_count)
+        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef, magn, debris_count, wind_penalty, aqi_value)
 
     # ================================== MAIN ====================================
+    
     async def fetchAllData(self):
         lat, lon = self.input_data["coordinates"]
         target_time, tz = self.input_data["target_timestamp"], self.input_data["timezone"]
@@ -733,70 +759,61 @@ CALCULATION:
         await self.calculateLocal(lat, lon, self.data["surface"]["height_msl"], input_time)
         # Flights
         await self.parseFlights(lat, lon)
-
-    def predictMath(self): # === ??????????????????
-        # Pressure, Cloud cover, Humidity, Temperature 
-        pressures = self.data["weather_summary"]["weather_normal"]
-        temperatures = self.data["weather_summary"]["weather_normal"]
-        humidities = self.data["weather_summary"]["weather_normal"]
-        cloud_datas = self.data["weather_summary"]["weather_normal"]
-        # Winds
-
-        # AQI
-
-        # DONKI
-
-        # Flights
-
-        # Visibility
-        return {
-            "presssure_pr": 0,
-            "visibility_pr": 0,
-            "cloud_cover_pr": 0,
-            "humidity_pr": 0,
-            "temperature_pr": 0,
-            "flare_pr": 0,
-            "aqi_pr": 0,
-            "wind_speed": 0,
-            "kp_pr": 0,
-            "wind_degrees": [], # [10, 23, 45, 90, .(5)., 120]
-            "magnetosphere_pr": 0,
-            "space_objects_pr": []
-        }
+    
     # ================================== OUTPUT FUNCTIONS ==================================
 
     def getFetchedData(self): return self.data
 
-    def getLCSReport(self): return self.form_lcs()
+    def getLCSReport(self): return self.form_lcs(self.predicted)
 
     def getPredictionPrompt(self):
         return f"""
-YOU HAVE:
+ROLE: You are an Advanced Space Launch Weather Predictor.
+TODAY IS {self.input_data["request_time"]}.
+CONTEXT: Calculate the LIKELY conditions for {self.input_data["target_timestamp"]} from the current state.
+HISTORICAL WINDOW: {HISTORY_WINDOW_YEARS} years.
+
+INPUT DATA:
 {{
-    "aqi_trends": {self},
-    "donki_trends": {self},
-    "": {self},
-    "": {self},
-    "": {self},
-    "": {self},
+    "location": "{self.data['location']['name']}",
+    "current_state": {{
+        "pressure": {self.data["weather_summary"]["pressure_surface"]},
+        "humidity": {self.data["weather_summary"]["average_humidity"]},
+        "clouds": {self.data["weather_summary"]["cloud_cover"]},
+        "visibility": {self.data["weather_summary"]["visibility"]},
+        "kp": {self.data["space_environment"]["kp_index_now"]},
+        "xray": "{self.data["space_environment"]["xray_flux_now"]}",
+        "aqi_pm10": {self.data["aqi_now"].get("pm10") if self.data["aqi_now"].get("pm10") else "null"}
+    }},
+    "historical_normals": {self.data["weather_summary"]["weather_normal"]},
+    "aqi_history": {self.data["aqi_trends"]},
+    "solar_activity_history": {self.data["space_environment"]["donki_trends"]},
+    "current_wind_profile": {self.data["wind_profile_now"]}
 }}
-YOU MUST RETURN:
+
+TASK:
+1. Compare "current_state" with "historical_normals". 
+2. If pressure is lower than normal, predict potential storm/wind increase.
+3. If solar activity (DONKI) shows a cluster of flares, predict higher KP/X-ray probability.
+4. Estimate wind profile for T+24h by extrapolating current shear trends.
+
+RETURN ONLY A VALID JSON OBJECT:
 {{
-    "presssure_pr": 0,
-    "visibility_pr": 0,
-    "cloud_cover_pr": 0,
-    "humidity_pr": 0,
-    "temperature_pr": 0,
-    "flare_pr": 0,
-    "aqi_pr": 0,
-    "wind_speed": 0,
-    "kp_pr": 0,
-    "wind_degrees": [], # [10, 23, 45, 90, .(5)., 120]
-    "magnetosphere_pr": 0,
-    "space_objects_pr": []
+    "pressure_pr": float,
+    "visibility_pr": int, // Base on pressure, temperature, cloud_cover, aqi and historical cloudiness
+    "cloud_cover_pr": int,
+    "humidity_pr": int,
+    "temperature_pr": float,
+    "flare_pr": float, // Probability 0-100 based on recent M/X flare frequency
+    "aqi_pr": float, // Predicted AQI
+    "avg_wind_speed_pr": float,
+    "max_wind_speed_pr": float,
+    "kp_pr": float,
+    "wind_degrees_pr": [int, int, int, int, int, int, int, int, int, int] // 10 values for different altitudes
+    "prediction_confidence": int // Overall confidence in the prediction (0-100)%
 }}
 """
-
+                
     def getEstimatingPrompt(self):
         with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
         overall_prompt = f'''
@@ -812,11 +829,13 @@ HISTORY_WINDOW_YEARS = {HISTORY_WINDOW_YEARS}
 FETCHED DATA:
 {json.dumps(self.data)}
 ---------------------------------------
-PREDICTED PARAMETERS:
-{0}
----------------------------------------
 {prompts["formula_explanation"]}
-{self.form_lcs()}
+{self.getLCSReport()}
+---------------------------------------
+PREDICTED DATA FOR {self.input_data["target_timestamp"]}:
+{self.predicted}
+IT WAS USED FOOR CALCULATING THE LCS VALUE
+PREDICTION CONFIDENCE: {self.predicted.get("prediction_confidence", 0)}%
 ---------------------------------------
 {prompts["output_format"]}
         '''

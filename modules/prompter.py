@@ -20,9 +20,12 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     # Fetch
     await data_fetcher.fetchAllData()
     # Predict
+    print(" ========== STARTING PREDICTION... ========== ")
     pr_prompt = data_fetcher.getPredictionPrompt()
     raw_ans = await ai.analyze(pr_prompt)
     clear_ans = raw_ans.replace("```json", "").replace("```", "").strip()
+    print(" ========== PREDICTION COMPLETE! DATA: ========== ") #
+    print(clear_ans) #
     data_fetcher.updatePredicted(clear_ans)
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
@@ -33,23 +36,17 @@ def getComparsionPrompt(inputs, data, analytics):
 
 inps = [
     {
-        "spaceport": "custom",
-        "coordinates": [35.2458, 139.1023], 
+        "spaceport": "Hokkaido Spaceport",
+        "coordinates": [42.5028, 143.4414], # Япония, северный космодром
         "target_timestamp": "2026-03-01T10:00:00Z",
         "timezone": "UTC+9",
     },
     {
-        "spaceport": "custom",
-        "coordinates": [-23.0008, -43.3547],
+        "spaceport": "Alcantara Launch Center",
+        "coordinates": [-2.3731, -44.3964], # Бразилия, экватор (идеально для S3/S5)
         "target_timestamp": "2026-03-05T15:00:00Z",
         "timezone": "UTC-3",
     },
-    {
-        "spaceport": "custom",
-        "coordinates": [28.5721, -80.6480], 
-        "target_timestamp": "2026-03-10T12:00:00Z",
-        "timezone": "UTC-5",
-    }
 ]
 
 async def analyseAllPoints(inputs):
@@ -60,7 +57,7 @@ async def analyseAllPoints(inputs):
     for input in inputs:
         print(" ========== STARTING POINT ANALYSIS... ========== ")
         prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
-        #fetched.append(data_fetcher.getFetchedData())
+        fetched.append(data_fetcher.getFetchedData())
         review = await ai.analyze(prompt)
         analytics.append(review)
 
@@ -68,7 +65,7 @@ async def analyseAllPoints(inputs):
         comp_prompt = getComparsionPrompt(inputs, fetched, analytics)
 
     print(fetched)
-    print("\n ----------------------------------- A -------------------------------------- \n")
+    print("\n ------------------------- ANALYTICS --------------------------- \n")
     print(analytics)
     print("\n ---------------------------------------------------------------------------- \n")
 

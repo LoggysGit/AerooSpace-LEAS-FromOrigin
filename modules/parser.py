@@ -20,7 +20,7 @@ PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
 HISTORY_WINDOW_YEARS = 5
-SPACETRACK_LIMIT = 20
+SPACETRACK_LIMIT = 5 # FOR TESTING (20)
 # - Keys -
 NASA_KEY = os.getenv("NASA_API_KEY")
 SPACETRACK_LOGIN = os.getenv("SPACETRACK_USER")

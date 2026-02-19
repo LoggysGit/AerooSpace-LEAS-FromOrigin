@@ -1,7 +1,5 @@
 import sys
-from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
-                             QFrame, QLabel, QComboBox, QLineEdit, QPushButton, 
-                             QScrollArea, QSpacerItem, QSizePolicy, QStackedWidget, QTextEdit)
+from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon, QColor, QIntValidator
 from PySide6.QtCore import Qt, QSize
 
@@ -9,6 +7,7 @@ from datetime import datetime
 import calendar
 
 import asyncio
+import json
 
 # --- Стили QSS (Темная тема) ---
 STYLE_SHEET = """
@@ -39,6 +38,15 @@ QLineEdit, QComboBox {
     color: #FFFFFF;
 }
 
+QFrame {
+    background-color: #252525;
+    padding: 10px;
+}
+QFrame:hover {
+    background-color: #2D2D2D;
+    border: 1px solid #444444;
+}
+
 QPushButton#AnalyseBtn {
     background-color: #FFFFFF;
     color: #000000;
@@ -67,16 +75,7 @@ class HistoryItem(QFrame):
     def __init__(self, title, subtitle):
         super().__init__()
         self.setFixedHeight(70)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: #252525;
-                padding: 10px;
-            }
-            QFrame:hover {
-                background-color: #2D2D2D;
-                border: 1px solid #444444;
-            }
-        """)
+        self.setStyleSheet(STYLE_SHEET)
         
         layout = QHBoxLayout(self)
         
@@ -101,31 +100,164 @@ class HistoryItem(QFrame):
             btn.setStyleSheet("background: #333; font-size: 14px;")
             layout.addWidget(btn)
 
-class AnalyticsWindow(QWidget):
-    def __init__(self, analytics_data):
+class StyledCard(QFrame):
+    """Универсальный контейнер для блоков интерфейса"""
+    def __init__(self, title, content_widget=None):
         super().__init__()
-        self.data = analytics_data
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("AerooSpace LEAS - Detailed Analysis")
-        self.resize(1100, 700)
-        self.setStyleSheet(STYLE_SHEET)
-
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setStyleSheet("""
+            StyledCard {
+                background-color: #252525;
+                border: 1px solid #333;
+                border-radius: 4px;
+            }
+            QLabel { color: #aaaaaa; font-weight: bold; margin-bottom: 5px; }
+        """)
         layout = QVBoxLayout(self)
+        self.label = QLabel(title.upper())
+        layout.addWidget(self.label)
+        if content_widget:
+            layout.addWidget(content_widget)
 
-        header = QLabel("Analysis Results")
-        header.setObjectName("Header")
-        layout.addWidget(header)
+class AnalyticsWindow(QWidget):
+    def __init__(self, file_path="resources/analytics/timestamp.json", index=0):
+        super().__init__()
+        self.setWindowTitle("LEAS FromOrigin - Analytics")
+        self.resize(1000, 900)
+        self.setStyleSheet("background-color: #1a1a1a; color: #ffffff; font-family: 'Segoe UI', Arial;")
 
-        self.result_view = QTextEdit()
-        self.result_view.setReadOnly(True)
-        self.result_view.setText(str(self.data))
-        layout.addWidget(self.result_view)
+        with open(file_path, 'r', encoding='utf-8') as f: self.data_json = json.load(f)
 
-        btn_back = QPushButton("Back to Setup")
-        btn_back.clicked.connect(self.close)
-        layout.addWidget(btn_back)
+        # MAIN LAYOUT
+        window_layout = QVBoxLayout(self)
+        window_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Scroll for window
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("border: none;")
+        
+        container = QWidget()
+        main_layout = QVBoxLayout(container)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(25)
+
+        # --- HEADER ---
+        header = QHBoxLayout()
+        header.addWidget(QLabel("LEAS FromOrigin"))
+        header.addStretch()
+
+        time = QLabel("2026-03-01T01:00:00Z")
+        time.setStyleSheet("font-width: 50px;")
+        header.addWidget(time)
+        main_layout.addLayout(header)
+
+        # --- TOP SECTION (Data & Verdict) ---
+        top_row = QHBoxLayout()
+        
+        # Левая колонка: Fetched Data
+        data_col = QVBoxLayout()
+        data_col.addWidget(QLabel("Point #1\nFetched Data"))
+        self.data_edit = QTextEdit(self.data_json["fetched_data"][index])
+        self.data_edit.setReadOnly(True)
+        self.data_edit.setStyleSheet("background: #252525; border: 1px solid #333; font-family: 'Consolas'; color: #00ff41;")
+        data_col.addWidget(self.data_edit)
+        top_row.addLayout(data_col, 2)
+
+        # Verdict & Score
+        verdict_col = QVBoxLayout()
+        verdict_col.addWidget(QLabel("Verdict"))
+        self.verdict_display = QTextEdit(self.data_json["ai_analytics"][index]["verdict"])
+        self.verdict_display.setStyleSheet("background: #252525; border: 1px solid #333;")
+        verdict_col.addWidget(self.verdict_display)
+        
+        self.score_label = QLabel(f"LCS: {self.data_json["ai_analytics"][index]["lcs"]}")
+        self.score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.score_label.setStyleSheet("font-size: 60px; font-weight: bold; margin-top: 10px;")
+        verdict_col.addWidget(self.score_label)
+        
+        verdict_col.addWidget(QLabel(f"Prediction Confidence: {self.data_json["presictions"][index]["prediction_confidence"]}%", alignment=Qt.AlignmentFlag.AlignCenter))
+        top_row.addLayout(verdict_col, 1)
+        
+        main_layout.addLayout(top_row)
+
+        # --- BOTTOM SECTION (Simulation & Chat) ---
+        bottom_row = QHBoxLayout()
+
+        # Body Behaviour + Inputs + Risks
+        sim_col = QVBoxLayout()
+        sim_col.addWidget(QLabel("Approximate body behaviour"))
+        
+        self.canvas_stub = QFrame()
+        self.canvas_stub.setMinimumHeight(300)
+        self.canvas_stub.setStyleSheet("background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 #002b36, stop:1 #0081a7); border-radius: 5px;")
+        sim_col.addWidget(self.canvas_stub)
+
+        # Demo setting inputs
+        input_grid = QVBoxLayout()
+        for label_text, default_val in [("Mass (kg)", "10.000"), ("Density (kg/m3)", "12.345"), ("Drag coef.", "0.0123")]:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(label_text))
+            line_edit = QLineEdit(default_val)
+            line_edit.setFixedWidth(120)
+            line_edit.setStyleSheet("background: #333; border: 1px solid #444; padding: 5px;")
+            row.addWidget(line_edit)
+            input_grid.addLayout(row)
+        sim_col.addLayout(input_grid)
+
+        # Risks
+        sim_col.addWidget(QLabel("Risks"))
+        self.risks_view = QTextEdit("• Risk 1\n• Risk 2")
+        self.risks_view.setMaximumHeight(100)
+        self.risks_view.setStyleSheet("background: #252525; color: #ff5555;")
+        sim_col.addWidget(self.risks_view)
+        
+        bottom_row.addLayout(sim_col, 1)
+
+        # MODEL REVIEW
+        chat_col = QVBoxLayout()
+        chat_col.addWidget(QLabel("Model Review"))
+        
+        # Chat scroll
+        self.chat_display = QTextEdit()
+        self.chat_display.setReadOnly(True)
+        self.chat_display.setPlaceholderText("Review logs...")
+        self.chat_display.setStyleSheet("background: #252525; border: 1px solid #333; border-bottom: none;")
+        chat_col.addWidget(self.chat_display)
+
+        # AI Inputfield
+        chat_input_area = QHBoxLayout()
+        self.chat_input = QLineEdit()
+        self.chat_input.setPlaceholderText("Input your request...")
+        self.chat_input.setStyleSheet("background: #333; border: 1px solid #444; padding: 10px; border-top-left-radius: 5px;")
+        
+        send_btn = QPushButton("➤")
+        send_btn.setFixedWidth(50)
+        send_btn.setStyleSheet("background: #444; border: 1px solid #555; padding: 10px;")
+        
+        chat_input_area.addWidget(self.chat_input)
+        chat_input_area.addWidget(send_btn)
+        chat_input_area.setSpacing(0)
+        chat_col.addLayout(chat_input_area)
+
+        # Recommendations from AI
+        chat_col.addSpacing(15)
+        chat_col.addWidget(QLabel("Recommendations"))
+        self.recom_display = QTextEdit("Actionable steps...")
+        self.recom_display.setMaximumHeight(150)
+        self.recom_display.setStyleSheet("background: #252525; border: 1px solid #333;")
+        chat_col.addWidget(self.recom_display)
+
+        bottom_row.addLayout(chat_col, 1)
+        main_layout.addLayout(bottom_row)
+
+        scroll.setWidget(container)
+        window_layout.addWidget(scroll)
+
+    # Add text to chat
+    def append_to_review(self, text):
+        self.chat_display.append(f"\n{text}")
+        self.chat_display.verticalScrollBar().setValue(self.chat_display.verticalScrollBar().maximum())
 
 class AerooSpaceApp(QWidget):
     def __init__(self):

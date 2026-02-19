@@ -517,7 +517,7 @@ class DataControlManager:
                             "elevation": round(alt_val, 2),
                             "range_km": round(dist_val, 2)
                         },
-                        "is_visible": alt_val > 0 # Can we see it physically
+                        "is_visible": alt_val > 500 # Can we see it physically (or will be in 10 minutes)
                     })
                 print(">[V] TLE Object processed")
             except Exception as e:

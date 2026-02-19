@@ -1,34 +1,76 @@
-/* Общий фон окна */
-QMainWindow {
-    background-color: #0d0d0d;
+QWidget {
+    background-color: #121212;
+    color: #FFFFFF;
 }
-
-/* Все кнопки */
-QPushButton {
-    background-color: #1a1a1a;
-    color: #ffffff;
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 10px 20px;
+QFrame#Panel {
+    background-color: #1E1E1E;
+    border: 1px solid #333333;
+}
+QLabel#Header {
+    font-family: 'Krona One';
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+QLabel#Label {
+    font-family: 'JetBrains Mono';
+    font-size: 12px;
+    color: #888888;
+}
+QLineEdit, QComboBox {
+    background-color: #2D2D2D;
+    border: 1px solid #3D3D3D;
+    padding: 10px;
+    font-family: 'JetBrains Mono';
     font-size: 14px;
+    color: #FFFFFF;
 }
-
-/* Эффект при наведении */
-QPushButton:hover {
-    background-color: #333;
-    border: 1px solid #0055ff;
+QFrame#Block {
+    background-color: #252525;
+    padding: 10px;
 }
-
-/* Обращение к конкретной кнопке по ObjectName */
-QPushButton#mainButton {
-    background-color: #0055ff;
-    font-weight: bold;
+QFrame#Frame-Hover:hover {
+    background-color: #2D2D2D;
+    border: 1px solid #444444;
 }
+QPushButton#AnalyseBtn {
+    background-color: #FFFFFF;
+    color: #000000;
+    font-family: 'Krona One';
+    font-size: 18px;
+    padding: 15px;
+    margin-top: 20px;
+}
+QPushButton#AnalyseBtn:hover {
+    background-color: #E0E0E0;
+}
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QPushButton#DeletePointBtn { 
+    background: #442222; color: white; border: none; 
+}
+QPushButton#DeletePointBtn:hover { background: #ff4444; }
 
-/* Поля ввода */
-QLineEdit {
-    background-color: #1a1a1a;
-    color: white;
-    border-radius: 5px;
-    padding: 5px;
+/* AnalyticsWindow */
+QTextEdit#DataDisplay {
+    background: #252525; border: 1px solid #333; font-family: 'Consolas'; color: #00ff41;
+}
+QTextEdit#VerdictDisplay, QTextEdit#ReviewDisplay {
+    background: #252525; border: 1px solid #333;
+}
+QTextEdit#ChatDisplay {
+    background: #252525; border: 1px solid #333; border-bottom: none; color: #00e5ff;
+}
+QTextEdit#RisksDisplay {
+    background: #252525; color: #ff5555;
+}
+QLabel#ScoreLabel {
+    font-size: 60px; font-weight: bold; margin-top: 10px;
+}
+QLineEdit#ChatInput {
+    background: #333; border: 1px solid #444; padding: 10px; border-top-left-radius: 0px;
+}
+QPushButton#SendBtn {
+    background: #444; border: 1px solid #555; padding: 10px;
 }

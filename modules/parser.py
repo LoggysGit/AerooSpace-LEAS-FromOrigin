@@ -1,5 +1,6 @@
 # - Dependences -
 import os
+import re
 import math
 import json
 import datetime
@@ -71,7 +72,14 @@ class DataControlManager:
         self.input_data["request_time"] = datetime.utcnow().isoformat() + "Z"
         self.input_data["timezone"] = utc_zone
 
-    def updatePredicted(self, parameters): self.predicted = parameters
+    def updatePredicted(self, parameters):
+        try:
+            match = re.search(r'(\{.*\}|\[.*\])', parameters, re.DOTALL)
+            if match:
+                clean_json = match.group(1)
+                self.predicted = json.loads(clean_json)
+            else: print("[P] JSON not found in the prediction response: ", parameters)
+        except json.JSONDecodeError as e: print(f"[P] Predicted Data Parsing Error: {e}")
 
     def utc_time(self, input_time, timezone):
         raw_offset = timezone.replace("UTC", "").strip()
@@ -664,7 +672,7 @@ class DataControlManager:
         for substance, limit in limits.items():
             val = aqi_data.get(substance)
             if val is not None:
-                # % from linit
+                # % from limit
                 indices.append((val / limit) * 100)
 
         return int(max(indices)) if indices else 0
@@ -702,8 +710,8 @@ CALCULATION:
 
     def form_lcs(self, data):
         # Main (S1)
-        press = int(data["pressure_pr"]) if "pressure_pr" in data else 1013
-        vis = int(data["visibility_pr"]) if "visibility_pr" in data else 3000
+        press = int(data["pressure_pr"]) if "pressure_pr" in data else 0
+        vis = int(data["visibility_pr"]) if "visibility_pr" in data else 0
         clouds = int(data["cloud_cover_pr"]) if "cloud_cover_pr" in data else 0
         # AQI
         aqi_value = int(data["aqi_pr"]) if "aqi_pr" in data else 0
@@ -732,14 +740,14 @@ CALCULATION:
         x_char = str(xray)[0].upper() if isinstance(xray, str) and len(xray) > 0 else 'A'
         xray_value = int(xray_map.get(x_char, 0))
         # Debris
-        debris_count = int(len(data["space_environment"]["objects_predicted"]))
+        debris_count = int(len(self.data["space_environment"]["objects_predicted"]))
         # Mgsph 
-        magn = 0 # PLACEHOLDER
+        magn = self.data["space_environment"]["mag_declination_pr"] if "mag_declination_pr" in self.data["space_environment"] else 0
         # Surface
-        latitude_rad = float(math.radians(data["coordinates"][0]))
-        height_msl = int(data["surface"]["height_msl"]) if "height_msl" in data["surface"] else 0
-        slope_degree = int(data["surface"]["slope_degree"]) if "slope_degree" in data["surface"] else 0
-        if data["spaceport"] != "custom": slope_degree = 0
+        latitude_rad = float(math.radians(self.input_data["coordinates"][0]))
+        height_msl = int(self.data["surface"]["height_msl"]) if "height_msl" in self.data["surface"] else 0
+        slope_degree = int(self.data["surface"]["slope_degree"]) if "slope_degree" in self.data["surface"] else 0
+        if self.input_data["spaceport"] != "custom": slope_degree = 0
         # Coefficient for terrain type
         s5_coef = 0 # PLACEHOLDER
 
@@ -800,6 +808,7 @@ HISTORICAL WINDOW: {HISTORY_WINDOW_YEARS} years.
 INPUT DATA:
 {{
     "location": "{self.data['location']['name']}",
+    "coordinates": {self.input_data['coordinates']}, // Lat, Lon
     "current_state": {{
         "pressure": {self.data["weather_summary"]["pressure_surface"]},
         "humidity": {self.data["weather_summary"]["average_humidity"]},
@@ -807,7 +816,7 @@ INPUT DATA:
         "visibility": {self.data["weather_summary"]["visibility"]},
         "kp": {self.data["space_environment"]["kp_index_now"]},
         "xray": "{self.data["space_environment"]["xray_flux_now"]}",
-        "aqi_pm10": {self.data["aqi_now"].get("pm10") if self.data["aqi_now"].get("pm10") else "null"}
+        "aqi_current": {self.data["aqi_now"] if self.data["aqi_now"] else "null"}
     }},
     "historical_normals": {self.data["weather_summary"]["weather_normal"]},
     "aqi_history": {self.data["aqi_trends"]},
@@ -820,16 +829,19 @@ TASK:
 2. If pressure is lower than normal, predict potential storm/wind increase.
 3. If solar activity (DONKI) shows a cluster of flares, predict higher KP/X-ray probability.
 4. Estimate wind profile for T+24h by extrapolating current shear trends.
-5. IF SOME CRITICAL DATA IS MISSING, SET DEPENDING PARAMETER ON None!
+CRITICAL LOGIC RULES:
+- PARAMETER ISOLATION: A missing value in one category (e.g., Space Environment) must NOT cause a None value in another (e.g., Weather Summary).
+- INTERPOLATION: If current_state has a null, use the trend: (Average of Historical Normals) + (Global Seasonal Shift in region).
+- NO CASCADING FAILURES: Fill every possible field. Use None only as a last resort for that specific field alone.
 
 RETURN ONLY A VALID JSON OBJECT:
 {{
     "pressure_pr": float,
     "visibility_pr": int, // Base on pressure, temperature, cloud_cover, aqi and historical cloudiness
-    "cloud_cover_pr": int,
+    "cloud_cover_pr": int, // Cloud cover prediction in percentage
     "humidity_pr": int,
     "temperature_pr": float,
-    "flare_pr": float, // Probability 0-100 based on recent M/X flare frequency
+    "flare_pr": float, // Predicted X-ray class (A, B, C, M, X) and number (e.g., M2.5)
     "aqi_pr": float, // Predicted AQI
     "avg_wind_speed_pr": float,
     "max_wind_speed_pr": float,

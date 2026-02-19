@@ -27,12 +27,11 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     print(" ========== PREDICTION COMPLETE! DATA: ========== ") #
     print(clear_ans) #
     data_fetcher.updatePredicted(clear_ans)
-    
     print("============================================================")
     print(json.dumps(clear_ans, indent=4, ensure_ascii=False))
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
-    return full_prompt
+    return clear_ans, full_prompt
 
 def getComparsionPrompt(inputs, data, analytics):
     return ""
@@ -56,18 +55,24 @@ async def analyseAllPoints(inputs):
     with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
     ai.setRole(prompts["role"])
 
-    fetched, analytics = [], []
+    fetched, predicted, analytics = [], [], []
     for input in inputs:
         print(" ========== STARTING POINT ANALYSIS... ========== ")
-        prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
+        pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
+        
         fetched.append(data_fetcher.getFetchedData())
+        predicted.append(pr)
+        
         review = await ai.analyze(prompt)
         analytics.append(review)
 
     if len(inputs) > 1:
         comp_prompt = getComparsionPrompt(inputs, fetched, analytics)
 
+    print("===================== COMPLETE! =====================")
     print(fetched)
+    print("\n ----------------------------------- PREDICTIONS -------------------------------------- \n")
+    print(predicted)
     print("\n ------------------------- ANALYTICS --------------------------- \n")
     print(analytics)
     print("\n ---------------------------------------------------------------------------- \n")

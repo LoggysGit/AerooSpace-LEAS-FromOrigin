@@ -27,6 +27,9 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     print(" ========== PREDICTION COMPLETE! DATA: ========== ") #
     print(clear_ans) #
     data_fetcher.updatePredicted(clear_ans)
+    
+    print("============================================================")
+    print(json.dumps(clear_ans, indent=4, ensure_ascii=False))
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
     return full_prompt

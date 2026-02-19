@@ -655,6 +655,20 @@ class DataControlManager:
         except Exception as e:
             print(f"[X] Calculation Error: {e}")
 
+    def calculate_aqi(self, aqi_data):
+        limits = {
+            "pm2_5": 25, "pm10": 50, "no2": 40, 
+            "so2": 20, "o3": 100, "co": 10000
+        }
+        indices = []
+        for substance, limit in limits.items():
+            val = aqi_data.get(substance)
+            if val is not None:
+                # % from linit
+                indices.append((val / limit) * 100)
+
+        return int(max(indices)) if indices else 0
+
     def getLCS(self, pressure_surf, visibility, cloud_cover, min_wind_temp, avg_humidity, max_wind_speed, kp, xray, latitude_rad, height_msl, slope_degree, s5_coef, magnetosphere_bias, debris_count, wind_penalty, aqi):
         s1 = (100 - abs((1013.25 - pressure_surf) / 2)) * 0.4 + (min(100, visibility / 100)) * 0.3 + ((100 * (1 - cloud_cover / 100)) * (1 - 0.5 * (int(min_wind_temp < -10) + int(avg_humidity / 100 > 0.7)))) * 0.3
         s2 = ((33 - max_wind_speed) * 3) - wind_penalty - (aqi/15)
@@ -688,43 +702,53 @@ CALCULATION:
 
     def form_lcs(self, data):
         # Main (S1)
-        press = data["pressure_pr"] or 1013.25
-        vis = data["visibility_pr"] or 3000
-        clouds = data["cloud_cover_pr"] or 0
-        # AQI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-        aqi_value = 0
+        press = int(data["pressure_pr"]) if "pressure_pr" in data else 1013
+        vis = int(data["visibility_pr"]) if "visibility_pr" in data else 3000
+        clouds = int(data["cloud_cover_pr"]) if "cloud_cover_pr" in data else 0
+        # AQI
+        aqi_value = int(data["aqi_pr"]) if "aqi_pr" in data else 0
         # Winds
-        min_wind_temp = data["min_wind_temp_pr"] or 0
-        max_wind_speed = data["max_wind_speed_pr"] or 0
+        min_wind_temp = int(data["min_wind_temp_pr"]) if "min_wind_temp_pr" in data else 0
+        max_wind_speed = int(data["max_wind_speed_pr"]) if "max_wind_speed_pr" in data else 0
+        avg_wind_speed = int(data["avg_wind_speed_pr"]) if "avg_wind_speed_pr" in data else 0
+        
+        wind_degrees = data["wind_degrees_pr"] if "wind_degrees_pr" in data else []
+        
         wind_penalty = 0
-        for di in range(1, data["wind_degrees_pr"] + 1):
-            theta_delta = abs(data["wind_degrees_pr"][di - 1] - data["wind_degrees_pr"][0])
-            act = 1 if theta_delta < 45 else 0
-            penalty = (0.7  - math.cos(math.radians(theta_delta))) * data["avg_wind_speed_pr"] * act
-            wind_penalty += penalty
+        if isinstance(wind_degrees, list) and len(wind_degrees) > 0:
+            for di in range(1, len(wind_degrees)):
+                theta_delta = abs(wind_degrees[di] - wind_degrees[0])
+                act = 1 if theta_delta < 45 else 0
+                penalty = (0.7 - math.cos(math.radians(theta_delta))) * avg_wind_speed * act
+                wind_penalty += penalty
+        wind_penalty = int(wind_penalty)
         # Humidity
-        avg_humidity = data["humidity_pr"] or 0
+        avg_humidity = int(data["humidity_pr"]) if "humidity_pr" in data else 0
         # KP
-        kp = data["kp_pr"] or 0
+        kp = int(data["kp_pr"]) if "kp_pr" in data else 0
         # Xray
-        xray = data["flare_pr"] or "A0.0"
+        xray = data["flare_pr"] if "flare_pr" in data else "A0.0"
         xray_map = {'X': 80, 'M': 30, 'C': 5, 'B': 1, 'A': 0}
-        xray_value = xray_map.get(xray[0], 0) if xray else 0
+        x_char = str(xray)[0].upper() if isinstance(xray, str) and len(xray) > 0 else 'A'
+        xray_value = int(xray_map.get(x_char, 0))
         # Debris
-        debris_count = len(data["space_environment"]["objects_predicted"])
-        # Mgsph !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        magn = 0
+        debris_count = int(len(data["space_environment"]["objects_predicted"]))
+        # Mgsph 
+        magn = 0 # PLACEHOLDER
         # Surface
-        latitude_rad = math.radians(data["coordinates"][0])
-        height_msl = data["surface"]["height_msl"] or 0
-        slope_degree = data["surface"]["slope_degree"] or 0
+        latitude_rad = float(math.radians(data["coordinates"][0]))
+        height_msl = int(data["surface"]["height_msl"]) if "height_msl" in data["surface"] else 0
+        slope_degree = int(data["surface"]["slope_degree"]) if "slope_degree" in data["surface"] else 0
         if data["spaceport"] != "custom": slope_degree = 0
-        # Coefficient for terrain type !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        s5_coef = 0
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # Coefficient for terrain type
+        s5_coef = 0 # PLACEHOLDER
 
-        return self.getLCS(press, vis, clouds, min_wind_temp, avg_humidity, max_wind_speed, kp, xray_value, latitude_rad, height_msl, slope_degree, s5_coef, magn, debris_count, wind_penalty, aqi_value)
-
+        return self.getLCS(
+            press, vis, clouds, min_wind_temp, avg_humidity, 
+            max_wind_speed, kp, xray_value, latitude_rad, 
+            height_msl, slope_degree, s5_coef, magn, 
+            debris_count, wind_penalty, aqi_value
+        )
     # ================================== MAIN ====================================
     
     async def fetchAllData(self):
@@ -788,7 +812,7 @@ INPUT DATA:
     "historical_normals": {self.data["weather_summary"]["weather_normal"]},
     "aqi_history": {self.data["aqi_trends"]},
     "solar_activity_history": {self.data["space_environment"]["donki_trends"]},
-    "current_wind_profile": {self.data["wind_profile_now"]}
+    "current_wind_profile": {self.data["wind_profile_now"]} // IMPORTANT: This parameter is list of lists [Altitude(m), Speed(m/s), Direction(deg), Temp(C)]
 }}
 
 TASK:
@@ -796,6 +820,7 @@ TASK:
 2. If pressure is lower than normal, predict potential storm/wind increase.
 3. If solar activity (DONKI) shows a cluster of flares, predict higher KP/X-ray probability.
 4. Estimate wind profile for T+24h by extrapolating current shear trends.
+5. IF SOME CRITICAL DATA IS MISSING, SET DEPENDING PARAMETER ON None!
 
 RETURN ONLY A VALID JSON OBJECT:
 {{

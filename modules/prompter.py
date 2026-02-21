@@ -2,8 +2,8 @@ import asyncio
 import json
 from datetime import datetime
 
-import controller as model  # AI Model Controller
-import parser as fetcher # Data Parser
+import modules.controller as model  # AI Model Controller
+import modules.parser as fetcher # Data Parser
 
 # === Constants ===
 MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
@@ -33,8 +33,16 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     full_prompt = data_fetcher.getEstimatingPrompt()
     return clear_ans, full_prompt
 
-def getComparsionPrompt(inputs, data, analytics):
-    return ""
+def getComparsionPrompt(input, data, analytics):
+    return f"""
+YOU NEED TO COMPARE
+INPUT DATA:
+{input}
+ALL FETCHED DATA ABOUT POINTS:
+{data}
+FINAL OVERVIEW:
+{analytics}
+"""
 
 inps = [
     {
@@ -51,40 +59,49 @@ inps = [
     },
 ]
 
-async def analyseAllPoints(inputs):
+async def analyseAllPoints(points):
     with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
     ai.setRole(prompts["role"])
 
     fetched, predicted, analytics = [], [], []
-    for input in inputs:
-        print(" ========== STARTING POINT ANALYSIS... ========== ")
-        pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
+    for input in points:
+        print(" ========== POINT ANALYSIS STARTED... ========== ")
+        try:
+            pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
         
-        fetched.append(data_fetcher.getFetchedData())
-        predicted.append(pr)
-        
-        review = await ai.analyze(prompt)
-        analytics.append(review)
+            fetched.append(data_fetcher.getFetchedData())
 
-    if len(inputs) > 1:
-        comp_prompt = getComparsionPrompt(inputs, fetched, analytics)
+            predicted.append(pr)
 
-    print("===================== COMPLETE! =====================")
-    print(fetched)
-    print("\n ----------------------------------- PREDICTIONS -------------------------------------- \n")
-    print(predicted)
-    print("\n ------------------------- ANALYTICS --------------------------- \n")
-    print(analytics)
-    print("\n ---------------------------------------------------------------------------- \n")
+            review = await ai.analyze(prompt)
+            analytics.append(review)
+            print(" ========== POINTS ANALYZED SUCCESSFULLY! ========== ")
+        except Exception as e: print(f" ========== ANALYZING ERROR: {e} ========== ")
 
-    print(datetime.now())
-    for item in analytics:
-        clean_text = item.replace("```json", "").replace("```", "").strip()
-        print(clean_text)
-        print("-" * 50)
+    if len(points) > 1:
+        print(" ========== COMPARING STARTED... ========== ")
+        comp_prompt = getComparsionPrompt(points, fetched, analytics)
+        comparsion = ""#ai.analyze(comp_prompt)
+        print(" ========== COMPARSION VERDICT SUCCESSFUL! ========== ")
 
-def compare(prompt):
-    pass
+    #print(datetime.now())
+
+    file = f"""
+{points},
+{fetched},
+{predicted},
+{analytics},
+{comparsion}
+"""
+    print(file)
+    try:
+        full_path = f"{datetime.now()}.json"
+        with open(full_path, "w", encoding="utf-8") as f: json.dump(file, f, ensure_ascii=False, indent=4)
+        print(f"[A]: Data successfully saved to {full_path}")
+        return full_path
+    except Exception as e:
+        print(f"[A]: Failed to save file: {e}")
+        return None
 
 # Test
-asyncio.run(analyseAllPoints(inps))
+#asyncio.run(analyseAllPoints(inps))

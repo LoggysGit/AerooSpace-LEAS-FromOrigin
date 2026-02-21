@@ -1,11 +1,17 @@
 # === Dependences ===
 import sys
 import json
+import asyncio
 from datetime import datetime
+from timezonefinder import TimezoneFinder
+import pytz
 import calendar
 from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit)
-from PySide6.QtGui import QFontDatabase, QFont, QIcon, QColor, QIntValidator
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QFontDatabase, QFont
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect
+# === Modules ===
+import modules.prompter as prompter
+import modules.simulator as simulator
 
 # === Constants ===
 ANALYTICS_PATH = "resources/analytics/"
@@ -39,6 +45,54 @@ class HistoryItem(QFrame):
             btn.setFixedSize(30, 30)
             btn.setStyleSheet("background: #333; font-size: 14px;")
             layout.addWidget(btn)
+class AerooLoadingScreen(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setFixedSize(300, 300)
+        self.setWindowTitle("Analytics in progress...")
+
+        self.setWindowFlags(
+            Qt.Window | 
+            Qt.CustomizeWindowHint | 
+            Qt.WindowMinimizeButtonHint | 
+            Qt.WindowStaysOnTopHint
+        )
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(10, 10, 10, 10)
+
+        self.container = QFrame()
+        self.container.setStyleSheet("""
+            QFrame {
+                background-color: #333333;
+            }
+        """)
+        
+        self.container_layout = QVBoxLayout(self.container)
+        self.container_layout.setAlignment(Qt.AlignCenter)
+
+        self.label = QLabel("ANALYSIS IN PROGRESS...\nPLEASE WAIT")
+        self.label.setObjectName("Label")
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("""
+            color: #f0f0f0;
+            font-family: 'JetBrains Mono';
+            font-size: 13px;
+            font-weight: bold;
+            background: transparent;
+        """)
+
+        self.container_layout.addWidget(self.label)
+        self.layout.addWidget(self.container)
+
+    def showEvent(self, event): super().showEvent(event)
+
+    def closeEvent(self, event): event.ignore()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape: event.ignore()
+        else: super().keyPressEvent(event)
 
 class AnalyticsWindow(QWidget):
     def __init__(self, file_path=f"{ANALYTICS_PATH}timestamp.json", index=0):
@@ -204,6 +258,24 @@ class AerooSpaceApp(QWidget):
 
     def getLastDay(self, y, m): return calendar.monthrange(y, m)[1]
 
+    def update_tz(self, lat_field, lng_field, tz_field):
+        try:
+            lat = lat_field.text()
+            lng = lng_field.text()
+
+            tf = TimezoneFinder()
+
+            timezone_str = tf.timezone_at(lng=float(lng), lat=float(lat))
+            
+            if timezone_str is None: return "+0"
+            timezone = pytz.timezone(timezone_str)
+            dt = datetime.now()
+            offset_seconds = timezone.utcoffset(dt).total_seconds()
+            offset_hours = int(offset_seconds / 3600)
+            
+            tz_field.setText(f"+{offset_hours}" if offset_hours >= 0 else str(offset_hours))
+        except: pass
+            
     def create_divider(self, container_layout):
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -237,10 +309,12 @@ class AerooSpaceApp(QWidget):
         spaceport_combo.addItem("custom")
         
         row_coords = QHBoxLayout()
-        latitude_coord = QLineEdit("43.3543")
-        longitude_coord = QLineEdit("77.0224")
+        latitude_coord = QLineEdit("28.3922")
+        longitude_coord = QLineEdit("-80.6077")
         latitude_coord.setObjectName("lat_input")
         longitude_coord.setObjectName("lon_input")
+        latitude_coord.editingFinished.connect(lambda: self.update_tz(latitude_coord, longitude_coord, tz_edit))
+        longitude_coord.editingFinished.connect(lambda: self.update_tz(latitude_coord, longitude_coord, tz_edit))
         self.add_field_to_layout(row_coords, "Latitude", latitude_coord)
         self.add_field_to_layout(row_coords, "Longitude", longitude_coord)
         container_layout.addLayout(row_coords)
@@ -260,7 +334,7 @@ class AerooSpaceApp(QWidget):
         # MONTH 
         month_edit = QLineEdit(str(current_m).zfill(2))
         month_edit.setFixedWidth(45)
-        month_edit.editingFinished.connect(lambda: self.fix_range(month_edit, 1, 12))
+        month_edit.editingFinished.connect(lambda: self.fix_range(month_edit, datetime.now().month, 12))
         month_edit.editingFinished.connect(lambda: self.fix_range(day_edit, 1, self.getLastDay(int(year_edit.text()), int(month_edit.text()))))
         month_edit.setObjectName("month_input")
         self.add_field_to_layout(row_date, "Month", month_edit)
@@ -271,14 +345,14 @@ class AerooSpaceApp(QWidget):
         if target_day > last_day_in_month:  target_day = last_day_in_month
         day_edit = QLineEdit(str(target_day).zfill(2))
         day_edit.setFixedWidth(45)
-        day_edit.editingFinished.connect(lambda: self.fix_range(day_edit, 1, self.getLastDay(int(year_edit.text()), int(month_edit.text()))))
+        day_edit.editingFinished.connect(lambda: self.fix_range(day_edit, now.day, self.getLastDay(int(year_edit.text()), int(month_edit.text()))))
         day_edit.setObjectName("day_input")
         self.add_field_to_layout(row_date, "Day", day_edit)
         
         utc_label = QLabel("UTC")
         utc_label.setFixedWidth(60)
         row_date.addWidget(utc_label)
-        tz_edit = QLineEdit("+0")
+        tz_edit = QLineEdit("-5")
         tz_edit.setFixedWidth(45)
         tz_edit.setObjectName("tz_input")
         self.add_field_to_layout(row_date, "TZ", tz_edit)
@@ -292,7 +366,6 @@ class AerooSpaceApp(QWidget):
             self.points_count += 1
             self.setup_input_ui(self.points_layout, self.points_count)
             if self.points_count >= 3: self.btn_add.hide()
-        print(self.point_containers)
 
     def remove_point(self, widget):
         widget.deleteLater()
@@ -301,16 +374,21 @@ class AerooSpaceApp(QWidget):
         self.point_containers.pop(self.points_count)
 
     def show_loading(self):
+        self.loading_window = AerooLoadingScreen()
+        self.loading_window.show()
+    def update_loading(self):
         pass
     def hide_loading(self):
-        pass
+        self.loading_window = AerooLoadingScreen()
+        self.loading_window.hide()
 
     def show_analytics_window(self, path):
         self.analytics_window = AnalyticsWindow(path)
         self.analytics_window.show()
 
-    def start_analyzing(self):
-        print("START!")
+    def start_analyzing(self, btn):
+        print("[A] ANALYZING STARTED!")
+        btn.setEnabled(False)
         self.show_loading()
         
         mission_input = []
@@ -342,15 +420,19 @@ class AerooSpaceApp(QWidget):
 
         print("Final collected data:", mission_input)
         
-        # --- Logic for prompting and saving should be here ---
+        # --- SENDING TO PROMPTER ---
+        file_name = asyncio.run(prompter.analyseAllPoints(mission_input))
 
         try:
-            current_analytics_path = f"{ANALYTICS_PATH}0.json"
+            current_analytics_path = f"{ANALYTICS_PATH}{file_name}.json"
             print(f"Opening window for: {current_analytics_path}")
             self.hide_loading()
             self.show_analytics_window(current_analytics_path)
-        except NameError: print("[A] Error: ANALYTICS_PATH is not defined. Check your constants.")
+        except NameError: print("[A] Error: Path is not defined. Check your constants.")
         except Exception as e: print(f"[A] Error:Failed to open window: {e}")
+
+        self.hide_loading()
+        btn.setEnabled(True)
 
     def init_ui(self):
         self.setWindowTitle("AerooSpace LEAS")
@@ -387,7 +469,7 @@ class AerooSpaceApp(QWidget):
 
         btn_analyse = QPushButton("Analyse")
         btn_analyse.setObjectName("AnalyseBtn")
-        btn_analyse.clicked.connect(self.start_analyzing)
+        btn_analyse.clicked.connect(lambda: self.start_analyzing(btn_analyse))
         analytics_block_layout.addWidget(btn_analyse)
         analytics_block.addWidget(panel_left)
 

@@ -9,6 +9,8 @@ playwright
 geomag
 skyfield
 ephem
+timezonefinder
+pytz
 
 # AI Engine
 llama-cpp-python>=0.2.79

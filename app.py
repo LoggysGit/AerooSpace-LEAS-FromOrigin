@@ -411,7 +411,7 @@ class AerooSpaceApp(QWidget):
                 else:
                     point_dict = {
                         "spaceport": sp_w.currentText(),
-                        "coordinates": [lat_w.text(), lng_w.text()],
+                        "coordinates": [float(lat_w.text()), float(lng_w.text())],
                         "target_timestamp": f"{y_w.text()}-{m_w.text().zfill(2)}-{d_w.text().zfill(2)}T00:00:00Z",
                         "timezone": f"UTC{tz_w.text()}"
                     }

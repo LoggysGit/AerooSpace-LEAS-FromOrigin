@@ -65,7 +65,7 @@ async def analyseAllPoints(points):
 
     fetched, predicted, analytics = [], [], []
     for input in points:
-        print(" ========== POINT ANALYSIS STARTED... ========== ")
+        print(" ========== POINTS ANALYSIS STARTED... ========== ")
         try:
             pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
         
@@ -78,6 +78,7 @@ async def analyseAllPoints(points):
             print(" ========== POINTS ANALYZED SUCCESSFULLY! ========== ")
         except Exception as e: print(f" ========== ANALYZING ERROR: {e} ========== ")
 
+    comparsion = ""
     if len(points) > 1:
         print(" ========== COMPARING STARTED... ========== ")
         comp_prompt = getComparsionPrompt(points, fetched, analytics)
@@ -95,10 +96,11 @@ async def analyseAllPoints(points):
 """
     print(file)
     try:
-        full_path = f"{datetime.now()}.json"
-        with open(full_path, "w", encoding="utf-8") as f: json.dump(file, f, ensure_ascii=False, indent=4)
-        print(f"[A]: Data successfully saved to {full_path}")
-        return full_path
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_name = f"report_{timestamp}.json"
+        with open(file_name, "w", encoding="utf-8") as f: json.dump(file, f, ensure_ascii=False, indent=4)
+        print(f"[A]: Data successfully saved to {file_name}")
+        return file_name
     except Exception as e:
         print(f"[A]: Failed to save file: {e}")
         return None

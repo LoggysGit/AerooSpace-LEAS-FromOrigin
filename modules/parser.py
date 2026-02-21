@@ -35,8 +35,6 @@ APIS = {
     # Space-Track: TLE Data for debris and satellites
     "SPACETRACK_AUTH": "https://www.space-track.org/ajaxauth/login",
     "SPACETRACK_QUERY": f"https://www.space-track.org/basicspacedata/query/class/gp/EPOCH/%3Enow-30/MEAN_MOTION/%3E11.25/format/json/limit/{SPACETRACK_LIMIT}",
-    # OpenWeather: Ground level pressure, humidity and icons
-    "OPENWEATHER": "https://api.openweathermap.org/data/2.5/weather",
     # OpenMeteo: High altitude wind, temp and air density (Pressure levels)
     "METEO": "https://api.open-meteo.com/v1/forecast",
     "AQI_TRENDS": "https://air-quality-api.open-meteo.com/v1/air-quality?",

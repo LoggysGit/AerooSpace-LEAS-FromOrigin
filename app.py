@@ -172,6 +172,8 @@ class AerooSpaceApp(QWidget):
         self.load_fonts()
         self.init_ui()
 
+    point_containers = []
+
     def load_fonts(self):
         QFontDatabase.addApplicationFont("assets/fonts/KronaOne.ttf")
         QFontDatabase.addApplicationFont("assets/fonts/JetBrainsMono/JetBrainsMono-Regular.ttf")
@@ -184,9 +186,6 @@ class AerooSpaceApp(QWidget):
             container.addWidget(lbl)
         container.addWidget(widget)
         layout.addLayout(container)
-
-    def add_single_field(self, parent_layout, label_text, widget):
-        self.add_field_to_layout(parent_layout, label_text, widget)
 
     def fix_range(self, widget, min_val, max_val):
         try:
@@ -202,6 +201,8 @@ class AerooSpaceApp(QWidget):
                 else: widget.setText(str(val))
         except ValueError:
             widget.setText(str(min_val))
+
+    def getLastDay(self, y, m): return calendar.monthrange(y, m)[1]
 
     def create_divider(self, container_layout):
         line = QFrame()
@@ -230,29 +231,48 @@ class AerooSpaceApp(QWidget):
             header_layout.addWidget(btn_del)
 
         container_layout.addLayout(header_layout)
-        self.spaceport_combo = QComboBox()
-        self.add_single_field(container_layout, "Spaceport", self.spaceport_combo)
-        self.spaceport_combo.addItem("custom")
+        spaceport_combo = QComboBox()
+        spaceport_combo.setObjectName("spaceport_input")
+        self.add_field_to_layout(container_layout, "Spaceport", spaceport_combo)
+        spaceport_combo.addItem("custom")
         
         row_coords = QHBoxLayout()
-        self.latitude_coord = QLineEdit("43.3543")
-        self.longitude_coord = QLineEdit("77.0224")
-        self.add_field_to_layout(row_coords, "Latitude", self.latitude_coord)
-        self.add_field_to_layout(row_coords, "Longitude", self.longitude_coord)
+        latitude_coord = QLineEdit("43.3543")
+        longitude_coord = QLineEdit("77.0224")
+        latitude_coord.setObjectName("lat_input")
+        longitude_coord.setObjectName("lon_input")
+        self.add_field_to_layout(row_coords, "Latitude", latitude_coord)
+        self.add_field_to_layout(row_coords, "Longitude", longitude_coord)
         container_layout.addLayout(row_coords)
         
         row_date = QHBoxLayout()
-        current_y = datetime.now().year
+        now = datetime.now()
+        current_y = now.year
+        current_m = now.month
+
+        # YEAR
         year_edit = QLineEdit(str(current_y))
         year_edit.setFixedWidth(60)
+        year_edit.editingFinished.connect(lambda: self.fix_range(year_edit, current_y, current_y + 5))
+        year_edit.setObjectName("year_input")
         self.add_field_to_layout(row_date, "Year", year_edit)
         
-        month_edit = QLineEdit("02")
+        # MONTH 
+        month_edit = QLineEdit(str(current_m).zfill(2))
         month_edit.setFixedWidth(45)
+        month_edit.editingFinished.connect(lambda: self.fix_range(month_edit, 1, 12))
+        month_edit.editingFinished.connect(lambda: self.fix_range(day_edit, 1, self.getLastDay(int(year_edit.text()), int(month_edit.text()))))
+        month_edit.setObjectName("month_input")
         self.add_field_to_layout(row_date, "Month", month_edit)
         
-        day_edit = QLineEdit("14")
+        # DAY 
+        last_day_in_month = self.getLastDay(int(year_edit.text()), int(month_edit.text()))
+        target_day = now.day + 14
+        if target_day > last_day_in_month:  target_day = last_day_in_month
+        day_edit = QLineEdit(str(target_day).zfill(2))
         day_edit.setFixedWidth(45)
+        day_edit.editingFinished.connect(lambda: self.fix_range(day_edit, 1, self.getLastDay(int(year_edit.text()), int(month_edit.text()))))
+        day_edit.setObjectName("day_input")
         self.add_field_to_layout(row_date, "Day", day_edit)
         
         utc_label = QLabel("UTC")
@@ -260,21 +280,25 @@ class AerooSpaceApp(QWidget):
         row_date.addWidget(utc_label)
         tz_edit = QLineEdit("+0")
         tz_edit.setFixedWidth(45)
+        tz_edit.setObjectName("tz_input")
         self.add_field_to_layout(row_date, "TZ", tz_edit)
         
         container_layout.addLayout(row_date)
         parent_layout.insertWidget(parent_layout.count() - 1, point_container)
+        self.point_containers.append(point_container)
 
     def add_point(self):
         if self.points_count < 3:
             self.points_count += 1
             self.setup_input_ui(self.points_layout, self.points_count)
             if self.points_count >= 3: self.btn_add.hide()
+        print(self.point_containers)
 
     def remove_point(self, widget):
         widget.deleteLater()
         self.points_count -= 1
         if self.points_count < 3: self.btn_add.show()
+        self.point_containers.pop(self.points_count)
 
     def show_loading(self):
         pass
@@ -286,18 +310,47 @@ class AerooSpaceApp(QWidget):
         self.analytics_window.show()
 
     def start_analyzing(self):
+        print("START!")
         self.show_loading()
-        # Collect data from points
         
-        # Send to prompter
+        mission_input = []
+        
+        print(f"Containers found: {len(self.point_containers)}")
+        
+        for container in self.point_containers:
+            try:
+                lat_w = container.findChild(QLineEdit, "lat_input")
+                lng_w = container.findChild(QLineEdit, "lon_input")
+                y_w = container.findChild(QLineEdit, "year_input")
+                m_w = container.findChild(QLineEdit, "month_input")
+                d_w = container.findChild(QLineEdit, "day_input")
+                tz_w = container.findChild(QLineEdit, "tz_input")
+                sp_w = container.findChild(QComboBox, "spaceport_input")
 
-        # Save result in file
+                if not all([lat_w, lng_w, y_w, m_w, d_w, tz_w, sp_w]):
+                    print("[A] Error: Some widgets missing in this container. Skipping.")
+                    continue
+                else:
+                    point_dict = {
+                        "spaceport": sp_w.currentText(),
+                        "coordinates": [lat_w.text(), lng_w.text()],
+                        "target_timestamp": f"{y_w.text()}-{m_w.text().zfill(2)}-{d_w.text().zfill(2)}T00:00:00Z",
+                        "timezone": f"UTC{tz_w.text()}"
+                    }
+                    mission_input.append(point_dict)
+            except Exception as e: print(f"[A] Error during collection: {e}")
 
-        # Show result
-        self.hide_loading()
-        analytics_path = {ANALYTICS_PATH} + f"{0}.json"
-        self.show_analytics_window(analytics_path)
-        pass
+        print("Final collected data:", mission_input)
+        
+        # --- Logic for prompting and saving should be here ---
+
+        try:
+            current_analytics_path = f"{ANALYTICS_PATH}0.json"
+            print(f"Opening window for: {current_analytics_path}")
+            self.hide_loading()
+            self.show_analytics_window(current_analytics_path)
+        except NameError: print("[A] Error: ANALYTICS_PATH is not defined. Check your constants.")
+        except Exception as e: print(f"[A] Error:Failed to open window: {e}")
 
     def init_ui(self):
         self.setWindowTitle("AerooSpace LEAS")
@@ -334,7 +387,7 @@ class AerooSpaceApp(QWidget):
 
         btn_analyse = QPushButton("Analyse")
         btn_analyse.setObjectName("AnalyseBtn")
-        btn_analyse.clicked.connect(self.show_analytics_window)
+        btn_analyse.clicked.connect(self.start_analyzing)
         analytics_block_layout.addWidget(btn_analyse)
         analytics_block.addWidget(panel_left)
 

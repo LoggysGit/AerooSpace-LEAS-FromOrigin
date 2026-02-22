@@ -19,9 +19,9 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     full_prompt = data_fetcher.getFetchedData()
     return full_prompt
 
-prompt = asyncio.run(getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"]))
-pr = data_fetcher.getPredictionPrompt()
-with open("test.txt", "w", encoding="utf-8") as f: f.write(json.dumps(prompt, indent=4, ensure_ascii=False))
-print(json.dumps(prompt, indent=4, ensure_ascii=False))
-print("\n ----------------------------------- A -------------------------------------- \n")
-print(json.dumps(pr, indent=4, ensure_ascii=False))
+#prompt = asyncio.run(getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"]))
+#pr = data_fetcher.getPredictionPrompt()
+#with open("test.txt", "w", encoding="utf-8") as f: f.write(json.dumps(prompt, indent=4, ensure_ascii=False))
+#print(json.dumps(prompt, indent=4, ensure_ascii=False))
+#print("\n ----------------------------------- A -------------------------------------- \n")
+#print(json.dumps(pr, indent=4, ensure_ascii=False))

@@ -1,86 +1,72 @@
 {
-    "Baikonur_Cosmodrome": {
-      "coordinates": [45.964, 63.305],
-      "location": "Kazakhstan-Baikonur",
-      "operator": "Roscosmos",
-      "timezone": "UTC+5"
-    },
-    "Kennedy_Space_Center": {
-      "coordinates": [28.572, -80.648],
-      "location": "USA-Florida",
-      "operator": "NASA",
-      "timezone": "UTC"
-    },
-    "Cape_Canaveral_Space_Force_Station": {
-      "coordinates": [28.488, -80.577],
-      "location": "USA-Florida",
-      "operator": "USSF / SpaceX",
-      "timezone": "UTC"
-    },
-    "Guiana_Space_Centre": {
-      "coordinates": [5.235, -52.768],
-      "location": "France-Kourou",
-      "operator": "ESA / Arianespace",
-      "timezone": "UTC"
-    },
-    "Starbase_Boca_Chica": {
-      "coordinates": [25.997, -97.155],
-      "location": "USA-Texas",
-      "operator": "SpaceX",
-      "timezone": "UTC"
-    },
-    "Vandenberg_Space_Force_Base": {
-      "coordinates": [34.742, -120.572],
-      "location": "USA-California",
-      "operator": "USSF / SpaceX",
-      "timezone": "UTC"
-    },
-    "Jiuquan_Satellite_Launch_Center": {
-      "coordinates": [40.960, 100.298],
-      "location": "China-Gansu",
-      "operator": "CNSA",
-      "timezone": "UTC"
-    },
-    "Wenchang_Space_Launch_Site": {
-      "coordinates": [19.614, 110.951],
-      "location": "China-Hainan",
-      "operator": "CNSA",
-      "timezone": "UTC"
-    },
-    "Vostochny_Cosmodrome": {
-      "coordinates": [51.884, 128.333],
-      "location": "Russia-Amur Oblast",
-      "operator": "Roscosmos",
-      "timezone": "UTC"
-    },
-    "Satish_Dhawan_Space_Centre": {
-      "coordinates": [13.719, 80.230],
-      "location": "India-Sriharikota",
-      "operator": "ISRO",
-      "timezone": "UTC"
-    },
-    "Tanegashima_Space_Center": {
-      "coordinates": [30.374, 130.957],
-      "location": "Japan-Kagoshima",
-      "operator": "JAXA",
-      "timezone": "UTC"
-    },
-    "Mahia_Launch_Complex_1": {
-      "coordinates": [-39.260, 177.865],
-      "location": "New Zealand-Mahia",
-      "operator": "Rocket Lab",
-      "timezone": "UTC"
-    },
-    "Naro_Space_Center": {
-      "coordinates": [34.426, 127.535],
-      "location": "South Korea-Goheung",
-      "operator": "KARI",
-      "timezone": "UTC"
-    },
-    "Alcântara_Space_Center": {
-      "coordinates": [-2.373, -44.396],
-      "location": "Brazil-Maranhão",
-      "operator": "FAB / AEB",
-      "timezone": "UTC"
-    }
+  "Baikonur_Cosmodrome": {
+    "coordinates": [45.9645, 63.3052],
+    "location": "Kazakhstan-Baikonur",
+    "timezone": "+5"
+  },
+  "Kennedy_Space_Center": {
+    "coordinates": [28.5721, -80.6483],
+    "location": "USA-Florida",
+    "timezone": "-5"
+  },
+  "Cape_Canaveral_Space_Force_Station": {
+    "coordinates": [28.4889, -80.5778],
+    "location": "USA-Florida",
+    "timezone": "-5"
+  },
+  "Guiana_Space_Centre": {
+    "coordinates": [5.2358, -52.7684],
+    "location": "France-Kourou",
+    "timezone": "-3"
+  },
+  "Starbase_Boca_Chica": {
+    "coordinates": [25.9973, -97.1555],
+    "location": "USA-Texas",
+    "timezone": "-6"
+  },
+  "Vandenberg_Space_Force_Base": {
+    "coordinates": [34.7420, -120.5724],
+    "location": "USA-California",
+    "timezone": "-8"
+  },
+  "Jiuquan_Satellite_Launch_Center": {
+    "coordinates": [40.9606, 100.2983],
+    "location": "China-Gansu",
+    "timezone": "+8"
+  },
+  "Wenchang_Space_Launch_Site": {
+    "coordinates": [19.6144, 110.9511],
+    "location": "China-Hainan",
+    "timezone": "+8"
+  },
+  "Vostochny_Cosmodrome": {
+    "coordinates": [51.8843, 128.3339],
+    "location": "Russia-Amur Oblast",
+    "timezone": "+9"
+  },
+  "Satish_Dhawan_Space_Centre": {
+    "coordinates": [13.7199, 80.2304],
+    "location": "India-Sriharikota",
+    "timezone": "+5.5"
+  },
+  "Tanegashima_Space_Center": {
+    "coordinates": [30.3748, 130.9577],
+    "location": "Japan-Kagoshima",
+    "timezone": "+9"
+  },
+  "Mahia_Launch_Complex_1": {
+    "coordinates": [-39.2603, 177.8658],
+    "location": "New Zealand-Mahia",
+    "timezone": "+12"
+  },
+  "Naro_Space_Center": {
+    "coordinates": [34.4261, 127.5351],
+    "location": "South Korea-Goheung",
+    "timezone": "+9"
+  },
+  "Alcântara_Space_Center": {
+    "coordinates": [-2.3730, -44.3966],
+    "location": "Brazil-Maranhão",
+    "timezone": "-3"
   }
+}

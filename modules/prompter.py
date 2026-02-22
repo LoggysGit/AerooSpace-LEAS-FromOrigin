@@ -1,4 +1,6 @@
 import asyncio
+import os
+import re
 import json
 from datetime import datetime
 
@@ -8,6 +10,7 @@ import modules.parser as fetcher # Data Parser
 # === Constants ===
 MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 PROMPTS_JSON_PATH = "resources/prompts.json"
+REPORTS_PATH = "resources/reports/"
 
 # === Objects & Variables ===
 ai = model.AIModel(MODEL_PATH)
@@ -28,7 +31,6 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     print(clear_ans) #
     data_fetcher.updatePredicted(clear_ans)
     print("============================================================")
-    print(json.dumps(clear_ans, indent=4, ensure_ascii=False))
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
     return clear_ans, full_prompt
@@ -42,6 +44,13 @@ ALL FETCHED DATA ABOUT POINTS:
 {data}
 FINAL OVERVIEW:
 {analytics}
+GIVE ANSWER IN THIS FORMAT:
+{{
+    "best": 0,
+    "comparing": str,
+    "final_verdict": str,
+    "recommendations": str
+}}
 """
 
 inps = [
@@ -85,25 +94,48 @@ async def analyseAllPoints(points):
         comparsion = ""#ai.analyze(comp_prompt)
         print(" ========== COMPARSION VERDICT SUCCESSFUL! ========== ")
 
+    save_report(points, fetched, predicted, analytics, comparsion)
+
     #print(datetime.now())
 
-    file = f"""
-{points},
-{fetched},
-{predicted},
-{analytics},
-{comparsion}
-"""
-    print(file)
+def clean_json_string(text):
+    if not isinstance(text, str): return text
+    match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+    return match.group(0) if match else text
+def ensure_obj(data):
+    if isinstance(data, list) and len(data) > 0: data = data[0]
+    if isinstance(data, str):
+        cleaned = clean_json_string(data)
+        try: return json.loads(cleaned)
+        except Exception as e:
+            print(f"[A] JSON Parse Error: {e}")
+            return data
+    return data
+def save_report(points, fetched, predicted, analytics, comparsion):
     try:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_data = {
+            "point_count": len(points),
+            "points": points,
+            "fetched": fetched,
+            "predicted": ensure_obj(predicted), # MAKE LIST
+            "analytics": ensure_obj(analytics), # MAKE LIST
+            "comparison": ensure_obj(comparsion)
+        }
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         file_name = f"report_{timestamp}.json"
-        with open(file_name, "w", encoding="utf-8") as f: json.dump(file, f, ensure_ascii=False, indent=4)
+        
+        # Use os.path.join to avoid double slashes or missing ones
+        full_path = os.path.join(REPORTS_PATH, file_name)
+
+        with open(full_path, "w", encoding="utf-8") as f:
+            json.dump(file_data, f, ensure_ascii=False, indent=4)
+            
         print(f"[A]: Data successfully saved to {file_name}")
         return file_name
     except Exception as e:
         print(f"[A]: Failed to save file: {e}")
-        return None
+        return "error.json"
 
 # Test
 #asyncio.run(analyseAllPoints(inps))

@@ -831,6 +831,7 @@ CRITICAL LOGIC RULES:
 - PARAMETER ISOLATION: A missing value in one category (e.g., Space Environment) must NOT cause a None value in another (e.g., Weather Summary).
 - INTERPOLATION: If current_state has a null, use the trend: (Average of Historical Normals) + (Global Seasonal Shift in region).
 - NO CASCADING FAILURES: Fill every possible field. Use None only as a last resort for that specific field alone.
+- EXTRA: DO NOT GIVE ANY EXPLANATIONS AND DESCRIPTIONS BESIDES JSON - IT IS IMPORTANT, A LOT OF LIVES MAY BE HURT.
 
 RETURN ONLY A VALID JSON OBJECT:
 {{

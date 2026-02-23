@@ -130,129 +130,190 @@ class AnalyticsWindow(QWidget):
     def __init__(self, file_path):
         super().__init__()
         self.setWindowTitle("LEAS FromOrigin - Analytics")
-        self.resize(1080, 720)
+        self.resize(1150, 850)
         self.setStyleSheet(STYLE_SHEET)
 
-        with open(file_path, 'r', encoding='utf-8') as f: self.data_json = json.load(f)
-        print(file_path)
+        # Загрузка данных
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                self.data_json = json.load(f)
+        except Exception as e:
+            print(f"Error loading report: {e}")
+            self.close()
+            return
 
+        self.current_index = 0
+        self.setup_ui()
+        self.display_point(0) # Показываем первую точку при запуске
+
+    def setup_ui(self):
+        # Основной лейаут окна
         window_layout = QVBoxLayout(self)
-        window_layout.setContentsMargins(0, 0, 0, 0)
+        window_layout.setContentsMargins(10, 10, 10, 10)
+        window_layout.setSpacing(10)
 
+        # --- 1. ПАНЕЛЬ НАВИГАЦИИ (Всегда сверху) ---
+        nav_container = QFrame()
+        nav_container.setObjectName("NavContainer")
+        nav_layout = QHBoxLayout(nav_container)
+        
+        nav_layout.addWidget(QLabel("SELECT POINT:"))
+        self.point_buttons = []
+        for i in range(self.data_json.get("point_count", 0)):
+            btn = QPushButton(f"#{i+1}")
+            btn.setCheckable(True)
+            btn.setFixedWidth(50)
+            btn.setObjectName("PointNavBtn")
+            if i == 0: btn.setChecked(True)
+            btn.clicked.connect(lambda checked, idx=i: self.switch_point(idx))
+            nav_layout.addWidget(btn)
+            self.point_buttons.append(btn)
+        
+        nav_layout.addStretch()
+        self.time_lbl = QLabel("-")
+        nav_layout.addWidget(self.time_lbl)
+        window_layout.addWidget(nav_container)
+
+        # --- 2. ОБЛАСТЬ СКРОЛЛА ---
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
         
-        for index in range(self.data_json["point_count"]):
-            container = QWidget()
-            main_layout = QVBoxLayout(container)
-            main_layout.setContentsMargins(30, 30, 30, 30)
-            main_layout.setSpacing(25)
+        # Контейнер внутри скролла
+        self.scroll_widget = QWidget()
+        self.content_layout = QVBoxLayout(self.scroll_widget)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)
+        self.content_layout.setSpacing(25) # Чуть больше места между блоками
 
-            header = QHBoxLayout()
-            header.addWidget(QLabel("LEAS FromOrigin"))
-            header.addWidget(QLabel(f"Point#{index+1}"))
-            header.addStretch()
-            time_lbl = QLabel("2026-03-01T01:00:00Z")
-            header.addWidget(time_lbl)
-            main_layout.addLayout(header)
+        # --- 3. ВНУТРЕННИЙ ИНТЕРФЕЙС (Контент) ---
+        
+        # --- Top Row (Fetched Data & Verdict) ---
+        top_row = QHBoxLayout()
+        
+        data_col = QVBoxLayout()
+        data_col.addWidget(QLabel("Fetched Data"))
+        self.data_edit = QTextEdit()
+        self.data_edit.setObjectName("DataDisplay")
+        self.data_edit.setReadOnly(True)
+        self.data_edit.setMinimumHeight(350) # Чтобы данные было удобно смотреть
+        data_col.addWidget(self.data_edit)
+        top_row.addLayout(data_col, 2)
 
-            top_row = QHBoxLayout()
+        verdict_col = QVBoxLayout()
+        verdict_col.addWidget(QLabel("Verdict"))
+        self.verdict_display = QTextEdit()
+        self.verdict_display.setObjectName("VerdictDisplay")
+        self.verdict_display.setReadOnly(True)
+        verdict_col.addWidget(self.verdict_display)
 
-            data_col = QVBoxLayout()
-            data_col.addWidget(QLabel("Fetched Data"))
-            self.data_edit = QTextEdit()
-            self.data_edit.setObjectName("DataDisplay")
-            self.data_edit.setPlainText(json.dumps(self.data_json["fetched"][index], indent=4, ensure_ascii=False))
-            self.data_edit.setReadOnly(True)
-            data_col.addWidget(self.data_edit)
-            top_row.addLayout(data_col, 2)
+        self.score_label = QLabel("LCS: --")
+        self.score_label.setObjectName("ScoreLabel")
+        self.score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        verdict_col.addWidget(self.score_label)
 
-            verdict_col = QVBoxLayout()
-            verdict_col.addWidget(QLabel("Verdict"))
-            self.verdict_display = QTextEdit()
-            self.verdict_display.setObjectName("VerdictDisplay")
-            self.verdict_display.setPlainText(str(self.data_json["analytics"][index]["verdict"]))
-            self.verdict_display.setReadOnly(True)
-            verdict_col.addWidget(self.verdict_display)
+        self.conf_lbl = QLabel("Confidence: --%")
+        self.conf_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        verdict_col.addWidget(self.conf_lbl)
+        top_row.addLayout(verdict_col, 1)
 
-            self.score_label = QLabel(f"LCS: {self.data_json['analytics'][index]['lcs']}")
-            self.score_label.setObjectName("ScoreLabel")
-            self.score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            verdict_col.addWidget(self.score_label)
+        self.content_layout.addLayout(top_row)
 
-            conf_lbl = QLabel(f"Prediction Confidence: {self.data_json['predicted'][index]['prediction_confidence']}%")
-            conf_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            verdict_col.addWidget(conf_lbl)
-            top_row.addLayout(verdict_col, 1)
+        # --- Bottom Row (Simulation & Reviews) ---
+        bottom_row = QHBoxLayout()
 
-            main_layout.addLayout(top_row)
+        # Симуляция (Левая колонка снизу)
+        sim_col = QVBoxLayout()
+        sim_col.addWidget(QLabel("Approximate body behaviour"))
+        self.canvas_stub = QFrame()
+        self.canvas_stub.setMinimumHeight(300)
+        self.canvas_stub.setStyleSheet("background: qlineargradient(x1:0.5, y1:0, x2:0.5, y2:1, stop:0 #002b36, stop:1 #0081a7); border-radius: 5px;")
+        sim_col.addWidget(self.canvas_stub)
 
-            bottom_row = QHBoxLayout()
+        # Входы для симулятора
+        input_grid = QVBoxLayout()
+        self.sim_inputs = {}
+        for label_text, key in [("Mass (kg)", "mass"), ("Density (kg/m3)", "dens"), ("Drag coef.", "drag")]:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(label_text))
+            edit = QLineEdit("0.0")
+            edit.setFixedWidth(100)
+            row.addWidget(edit)
+            input_grid.addLayout(row)
+            self.sim_inputs[key] = edit
+        sim_col.addLayout(input_grid)
+        bottom_row.addLayout(sim_col, 1)
 
-            sim_col = QVBoxLayout()
-            sim_col.addWidget(QLabel("Approximate body behaviour"))
-            self.canvas_stub = QFrame()
-            self.canvas_stub.setMinimumHeight(300)
-            self.canvas_stub.setStyleSheet("background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1, stop:0 #002b36, stop:1 #0081a7); border-radius: 5px;")
-            sim_col.addWidget(self.canvas_stub)
+        # Аналитика и чат (Правая колонка снизу)
+        chat_col = QVBoxLayout()
+        chat_col.addWidget(QLabel("Model Review"))
+        self.review_display = QTextEdit()
+        self.review_display.setObjectName("ReviewDisplay")
+        self.review_display.setReadOnly(True)
+        self.review_display.setMinimumHeight(150)
+        chat_col.addWidget(self.review_display)
 
-            input_grid = QVBoxLayout()
-            for label_text, default_val in [("Mass (kg)", "10.000"), ("Density (kg/m3)", "12.345"), ("Drag coef.", "0.0123")]:
-                row = QHBoxLayout()
-                row.addWidget(QLabel(label_text))
-                line_edit = QLineEdit(default_val)
-                line_edit.setFixedWidth(120)
-                row.addWidget(line_edit)
-                input_grid.addLayout(row)
-            sim_col.addLayout(input_grid)
+        chat_col.addWidget(QLabel("Recommendations & Chat History"))
+        self.chat_display = QTextEdit()
+        self.chat_display.setObjectName("ChatDisplay")
+        self.chat_display.setReadOnly(True)
+        self.chat_display.setMinimumHeight(200)
+        chat_col.addWidget(self.chat_display)
 
-            sim_col.addWidget(QLabel("Risks"))
-            self.risks_view = QTextEdit("• Risk 1\n• Risk 2")
-            self.risks_view.setObjectName("RisksDisplay")
-            self.risks_view.setMaximumHeight(100)
-            sim_col.addWidget(self.risks_view)
-            bottom_row.addLayout(sim_col, 1)
+        chat_col.addWidget(QLabel("Risks"))
+        self.risks_view = QTextEdit()
+        self.risks_view.setObjectName("RisksDisplay")
+        self.risks_view.setMaximumHeight(100)
+        chat_col.addWidget(self.risks_view)
+        
+        bottom_row.addLayout(chat_col, 1)
+        self.content_layout.addLayout(bottom_row)
 
-            chat_col = QVBoxLayout()
-            chat_col.addWidget(QLabel("Model Review"))
-            self.review_display = QTextEdit()
-            self.review_display.setObjectName("ReviewDisplay")
-            self.review_display.setReadOnly(True)
-            self.review_display.setPlainText(str(self.data_json["analytics"][index]["review"]))
-            self.review_display.setMaximumHeight(200)
-            chat_col.addWidget(self.review_display)
+        # Финализируем скролл
+        scroll.setWidget(self.scroll_widget)
+        window_layout.addWidget(scroll)
 
-            chat_col.addSpacing(15)
-            chat_col.addWidget(QLabel("Recommendations & Chat"))
-            self.chat_display = QTextEdit()
-            self.chat_display.setObjectName("ChatDisplay")
-            self.chat_display.setReadOnly(True)
-            self.chat_display.setPlainText(f"AI: {self.data_json['analytics'][index]['recommendations']}")
-            chat_col.addWidget(self.chat_display)
+        # --- 4. ЧАТ ИНПУТ (Всегда снизу окна) ---
+        chat_input_area = QHBoxLayout()
+        self.chat_input = QLineEdit()
+        self.chat_input.setPlaceholderText("Ask AI about this point...")
+        send_btn = QPushButton("➤")
+        send_btn.setFixedWidth(50)
+        chat_input_area.addWidget(self.chat_input)
+        chat_input_area.addWidget(send_btn)
+        window_layout.addLayout(chat_input_area)
 
-            chat_input_area = QHBoxLayout()
-            self.chat_input = QLineEdit()
-            self.chat_input.setObjectName("ChatInput")
-            self.chat_input.setPlaceholderText("Input your request...")
+    def switch_point(self, index):
+        for i, btn in enumerate(self.point_buttons): btn.setChecked(i == index)
+        
+        self.current_index = index
+        self.display_point(index)
 
-            send_btn = QPushButton("➤")
-            send_btn.setObjectName("SendBtn")
-            send_btn.setFixedWidth(50)
+    def display_point(self, index):
+        """Обновление всех виджетов данными конкретной точки"""
+        try:
+            point_info = self.data_json["points"][index]
+            fetched = self.data_json["fetched"][index]
+            predicted = self.data_json["predicted"][index]
+            analytics = self.data_json["analytics"][index]
 
-            chat_input_area.addWidget(self.chat_input)
-            chat_input_area.addWidget(send_btn)
-            chat_input_area.setSpacing(0)
-            chat_col.addLayout(chat_input_area)
+            self.time_lbl.setText(f"Target: {point_info.get('target_timestamp', 'N/A')}")
+            self.data_edit.setPlainText(json.dumps(fetched, indent=4, ensure_ascii=False))
+            self.verdict_display.setPlainText(str(analytics.get("verdict", "No verdict")))
+            self.score_label.setText(f"LCS: {analytics.get('lcs', 0)}")
+            self.conf_lbl.setText(f"Prediction Confidence: {predicted.get('prediction_confidence', 0)}%")
+            self.review_display.setPlainText(str(analytics.get("review", "")))
+            
+            risks = analytics.get("risks", [])
+            self.risks_view.setPlainText("\n".join([f"• {r}" for r in risks]) if risks else "No major risks identified.")
+            
+            self.chat_display.setPlainText(f"AI: {analytics.get('recommendations', '')}")
+            
+        except IndexError:
+            print(f"Error: Point {index} data missing in JSON")
 
-            bottom_row.addLayout(chat_col, 1)
-            main_layout.addLayout(bottom_row)
-
-            scroll.setWidget(container)
-            window_layout.addWidget(scroll)
-
-    def append_to_review(self, text):
-        self.chat_display.append(f"\n{text}")
-        self.chat_display.verticalScrollBar().setValue(self.chat_display.verticalScrollBar().maximum())
+    def append_to_chat(self, text):
+        self.chat_display.append(f"\nUser: {text}")
+        # Тут можно вызвать API или логику ответа
 
 class AerooSpaceApp(QWidget):
     def __init__(self):
@@ -442,7 +503,7 @@ class AerooSpaceApp(QWidget):
         # YEAR
         year_edit = QLineEdit(str(current_y))
         year_edit.setFixedWidth(60)
-        year_edit.editingFinished.connect(lambda: self.fix_range(year_edit, current_y, current_y + 5))
+        year_edit.editingFinished.connect(lambda: self.fix_range(year_edit, current_y, current_y + 1))
         year_edit.setObjectName("year_input")
         self.add_field_to_layout(row_date, "Year", year_edit)
         
@@ -531,11 +592,10 @@ class AerooSpaceApp(QWidget):
                     print("[A] Error: Some widgets missing in this container. Operation aborted.")
                     break
 
-                try:
-                    lat_w_f = float(lat_w)
-                    lon_w_f = float(lon_w)
-                except:
-                    print("[A] Error: Not all types are correct. Operation aborted.")
+                lat_w_f = type(float(lat_w.text()))
+                lon_w_f = type(float(lon_w.text()))
+                if lat_w_f != float or lon_w_f != float:
+                    print(f"[A] Error: ({lat_w_f}, {lon_w_f}). Operation aborted.")
                     break
                 else:
                     point_dict = {

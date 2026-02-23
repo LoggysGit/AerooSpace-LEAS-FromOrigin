@@ -91,10 +91,10 @@ async def analyseAllPoints(points):
     if len(points) > 1:
         print(" ========== COMPARING STARTED... ========== ")
         comp_prompt = getComparsionPrompt(points, fetched, analytics)
-        comparsion = ""#ai.analyze(comp_prompt)
+        comparsion = "-"#ai.analyze(comp_prompt)
         print(" ========== COMPARSION VERDICT SUCCESSFUL! ========== ")
-
-    save_report(points, fetched, predicted, analytics, comparsion)
+    
+    if points != []: save_report(points, fetched, predicted, analytics, comparsion)
 
     #print(datetime.now())
 
@@ -103,21 +103,25 @@ def clean_json_string(text):
     match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
     return match.group(0) if match else text
 def ensure_obj(data):
-    if isinstance(data, list) and len(data) > 0: data = data[0]
+    if data is None: return []
+    
     if isinstance(data, str):
         cleaned = clean_json_string(data)
-        try: return json.loads(cleaned)
+        try: data = json.loads(cleaned)
         except Exception as e:
             print(f"[A] JSON Parse Error: {e}")
-            return data
-    return data
+            return []
+    if isinstance(data, dict): return [data]
+    if isinstance(data, list): return data
+        
+    return []
 def save_report(points, fetched, predicted, analytics, comparsion):
     try:
         file_data = {
             "point_count": len(points),
             "points": points,
             "fetched": fetched,
-            "predicted": ensure_obj(predicted), # MAKE LIST
+            "predicted": list(ensure_obj(predicted)), # MAKE LIST
             "analytics": ensure_obj(analytics), # MAKE LIST
             "comparison": ensure_obj(comparsion)
         }

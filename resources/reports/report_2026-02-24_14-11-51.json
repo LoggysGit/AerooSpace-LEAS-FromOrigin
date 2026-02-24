@@ -1,0 +1,703 @@
+{
+    "point_count": 2,
+    "points": [
+        {
+            "spaceport": "Jiuquan Satellite Launch Center",
+            "coordinates": [
+                40.9606,
+                100.2983
+            ],
+            "target_timestamp": "2026-02-28T00:00:00Z",
+            "timezone": "UTC+8"
+        },
+        {
+            "spaceport": "Guiana Space Centre",
+            "coordinates": [
+                5.2358,
+                -52.7684
+            ],
+            "target_timestamp": "2026-02-28T00:00:00Z",
+            "timezone": "UTC-3"
+        }
+    ],
+    "fetched": [
+        {
+            "location": {
+                "name": "China-Bayantakhoy"
+            },
+            "wind_profile_now": [
+                [
+                    100,
+                    1.75,
+                    246,
+                    8.5
+                ],
+                [
+                    750,
+                    1.7,
+                    247,
+                    4.4
+                ],
+                [
+                    1500,
+                    6.75,
+                    203,
+                    7.2
+                ],
+                [
+                    3000,
+                    11.42,
+                    255,
+                    -0.3
+                ],
+                [
+                    5500,
+                    23.73,
+                    274,
+                    -20.8
+                ],
+                [
+                    9000,
+                    32.01,
+                    278,
+                    -50.5
+                ],
+                [
+                    10500,
+                    32.95,
+                    281,
+                    -59.5
+                ],
+                [
+                    16000,
+                    23.67,
+                    269,
+                    -57.0
+                ],
+                [
+                    20000,
+                    8.43,
+                    252,
+                    -57.0
+                ],
+                [
+                    31000,
+                    9.62,
+                    104,
+                    -49.5
+                ]
+            ],
+            "aqi_now": {
+                "pm2_5": 102,
+                "pm10": 76,
+                "no2": 4.2,
+                "so2": 7.1,
+                "o3": null,
+                "co": 4.6
+            },
+            "aqi_trends": [
+                {
+                    "date": "2025-02-27",
+                    "content": {
+                        "pm2_5": 9.4,
+                        "pm10": 38.4,
+                        "no2": 0.9,
+                        "so2": 0.8,
+                        "o3": 63.0,
+                        "co": 186.0
+                    }
+                },
+                {
+                    "date": "2024-02-27",
+                    "content": {
+                        "pm2_5": 29.9,
+                        "pm10": 53.0,
+                        "no2": 2.0,
+                        "so2": 0.5,
+                        "o3": 68.0,
+                        "co": 227.0
+                    }
+                },
+                {
+                    "date": "2023-02-27",
+                    "content": {
+                        "pm2_5": 14.3,
+                        "pm10": 101.7,
+                        "no2": 0.7,
+                        "so2": 0.7,
+                        "o3": 74.0,
+                        "co": 129.0
+                    }
+                },
+                {
+                    "date": "2022-02-27",
+                    "content": {
+                        "pm2_5": null,
+                        "pm10": null,
+                        "no2": null,
+                        "so2": null,
+                        "o3": null,
+                        "co": null
+                    }
+                },
+                {
+                    "date": "2021-02-27",
+                    "content": {
+                        "pm2_5": null,
+                        "pm10": null,
+                        "no2": null,
+                        "so2": null,
+                        "o3": null,
+                        "co": null
+                    }
+                }
+            ],
+            "weather_summary": {
+                "pressure_surface": 883.6,
+                "average_humidity": 48,
+                "cloud_cover": 100,
+                "visibility": 24140.0,
+                "forecast_7d": [
+                    3,
+                    3,
+                    3,
+                    3,
+                    3,
+                    3,
+                    3
+                ],
+                "weather_normal": [
+                    {
+                        "year": 2025,
+                        "temperature": 2.6,
+                        "pressure": 889.1,
+                        "cloud_cover": 43.0,
+                        "humidity": 27.0
+                    },
+                    {
+                        "year": 2024,
+                        "temperature": -3.6,
+                        "pressure": 902.1,
+                        "cloud_cover": 88.0,
+                        "humidity": 33.0
+                    },
+                    {
+                        "year": 2023,
+                        "temperature": 2.1,
+                        "pressure": 903.5,
+                        "cloud_cover": 63.0,
+                        "humidity": 22.0
+                    },
+                    {
+                        "year": 2022,
+                        "temperature": -0.2,
+                        "pressure": 897.9,
+                        "cloud_cover": 51.0,
+                        "humidity": 25.0
+                    },
+                    {
+                        "year": 2021,
+                        "temperature": -0.6,
+                        "pressure": 895.9,
+                        "cloud_cover": 80.0,
+                        "humidity": 23.0
+                    }
+                ]
+            },
+            "space_environment": {
+                "kp_index_now": null,
+                "xray_flux_now": null,
+                "donki_trends": [
+                    {
+                        "year": 2021,
+                        "flare_count": 1,
+                        "peak_class": "B9.5",
+                        "flares": [
+                            {
+                                "peak_time": "2021-02-26T07:25Z",
+                                "class": "B9.5",
+                                "location": "S23W43",
+                                "region": 12805
+                            }
+                        ]
+                    }
+                ],
+                "mag_declination_pr": 0,
+                "sun_pos_pr": [
+                    321.91,
+                    -51.44
+                ],
+                "moon_pos_pr": [
+                    241.5,
+                    63.94
+                ],
+                "objects_predicted": [
+                    {
+                        "name": "TBA - TO BE ASSIGNED",
+                        "norad_id": "270073",
+                        "type": "UNKNOWN",
+                        "rcs": "None",
+                        "position_prediction": {
+                            "azimuth": 195.38,
+                            "elevation": -21.38,
+                            "range_km": 6794.79
+                        },
+                        "is_visible": false
+                    },
+                    {
+                        "name": "PEGASUS DEB",
+                        "norad_id": "24165",
+                        "type": "DEBRIS",
+                        "rcs": "SMALL",
+                        "position_prediction": {
+                            "azimuth": null,
+                            "elevation": null,
+                            "range_km": null
+                        },
+                        "is_visible": false
+                    },
+                    {
+                        "name": "JILIN-01 GAOFEN 3D 7",
+                        "norad_id": "52392",
+                        "type": "PAYLOAD",
+                        "rcs": "MEDIUM",
+                        "position_prediction": {
+                            "azimuth": 283.04,
+                            "elevation": -61.79,
+                            "range_km": 9281.25
+                        },
+                        "is_visible": false
+                    },
+                    {
+                        "name": "CZ-4 DEB",
+                        "norad_id": "37624",
+                        "type": "DEBRIS",
+                        "rcs": "SMALL",
+                        "position_prediction": {
+                            "azimuth": 97.37,
+                            "elevation": -39.44,
+                            "range_km": 9370.74
+                        },
+                        "is_visible": false
+                    },
+                    {
+                        "name": "COSMOS 1823 DEB",
+                        "norad_id": "39828",
+                        "type": "DEBRIS",
+                        "rcs": "SMALL",
+                        "position_prediction": {
+                            "azimuth": 356.15,
+                            "elevation": -47.79,
+                            "range_km": 11379.69
+                        },
+                        "is_visible": false
+                    }
+                ]
+            },
+            "surface": {
+                "height_msl": 1074.0,
+                "slope_degree": 2.15,
+                "terrain_type": "Flat Plain"
+            },
+            "aviation": {
+                "shedules_now": []
+            }
+        },
+        {
+            "location": {
+                "name": "China-Bayantakhoy"
+            },
+            "wind_profile_now": [
+                [
+                    100,
+                    4.55,
+                    50,
+                    24.7
+                ],
+                [
+                    750,
+                    10.66,
+                    52,
+                    19.9
+                ],
+                [
+                    1500,
+                    9.45,
+                    70,
+                    15.2
+                ],
+                [
+                    3000,
+                    14.51,
+                    80,
+                    11.1
+                ],
+                [
+                    5500,
+                    2.4,
+                    56,
+                    -5.4
+                ],
+                [
+                    9000,
+                    7.6,
+                    218,
+                    -30.5
+                ],
+                [
+                    10500,
+                    11.38,
+                    185,
+                    -40.5
+                ],
+                [
+                    16000,
+                    10.34,
+                    291,
+                    -82.0
+                ],
+                [
+                    20000,
+                    13.99,
+                    102,
+                    -69.5
+                ],
+                [
+                    31000,
+                    19.77,
+                    264,
+                    -44.0
+                ]
+            ],
+            "aqi_now": {
+                "pm2_5": 102,
+                "pm10": 76,
+                "no2": 4.2,
+                "so2": 7.1,
+                "o3": null,
+                "co": 4.6
+            },
+            "aqi_trends": [
+                {
+                    "date": "2025-02-27",
+                    "content": {
+                        "pm2_5": 9.4,
+                        "pm10": 38.4,
+                        "no2": 0.9,
+                        "so2": 0.8,
+                        "o3": 63.0,
+                        "co": 186.0
+                    }
+                },
+                {
+                    "date": "2024-02-27",
+                    "content": {
+                        "pm2_5": 29.9,
+                        "pm10": 53.0,
+                        "no2": 2.0,
+                        "so2": 0.5,
+                        "o3": 68.0,
+                        "co": 227.0
+                    }
+                },
+                {
+                    "date": "2023-02-27",
+                    "content": {
+                        "pm2_5": 14.3,
+                        "pm10": 101.7,
+                        "no2": 0.7,
+                        "so2": 0.7,
+                        "o3": 74.0,
+                        "co": 129.0
+                    }
+                },
+                {
+                    "date": "2022-02-27",
+                    "content": {
+                        "pm2_5": null,
+                        "pm10": null,
+                        "no2": null,
+                        "so2": null,
+                        "o3": null,
+                        "co": null
+                    }
+                },
+                {
+                    "date": "2021-02-27",
+                    "content": {
+                        "pm2_5": null,
+                        "pm10": null,
+                        "no2": null,
+                        "so2": null,
+                        "o3": null,
+                        "co": null
+                    }
+                },
+                {
+                    "date": "2025-02-28",
+                    "content": {
+                        "pm2_5": 13.2,
+                        "pm10": 18.4,
+                        "no2": 0.2,
+                        "so2": 0.1,
+                        "o3": 60.0,
+                        "co": 114.0
+                    }
+                },
+                {
+                    "date": "2024-02-28",
+                    "content": {
+                        "pm2_5": 20.6,
+                        "pm10": 30.5,
+                        "no2": 0.1,
+                        "so2": 0.1,
+                        "o3": 37.0,
+                        "co": 121.0
+                    }
+                },
+                {
+                    "date": "2023-02-28",
+                    "content": {
+                        "pm2_5": 5.6,
+                        "pm10": 8.8,
+                        "no2": 1.2,
+                        "so2": 0.2,
+                        "o3": 43.0,
+                        "co": 149.0
+                    }
+                }
+            ],
+            "weather_summary": {
+                "pressure_surface": 1011.6,
+                "average_humidity": 82,
+                "cloud_cover": 41,
+                "visibility": 24140.0,
+                "forecast_7d": [
+                    3,
+                    80,
+                    2,
+                    2,
+                    3,
+                    3,
+                    3
+                ],
+                "weather_normal": [
+                    {
+                        "year": 2025,
+                        "temperature": 26.7,
+                        "pressure": 1011.7,
+                        "cloud_cover": 66.0,
+                        "humidity": 69.0
+                    },
+                    {
+                        "year": 2024,
+                        "temperature": 27.0,
+                        "pressure": 1012.0,
+                        "cloud_cover": 47.0,
+                        "humidity": 72.0
+                    },
+                    {
+                        "year": 2023,
+                        "temperature": 24.6,
+                        "pressure": 1012.7,
+                        "cloud_cover": 98.0,
+                        "humidity": 93.0
+                    },
+                    {
+                        "year": 2022,
+                        "temperature": 24.7,
+                        "pressure": 1010.9,
+                        "cloud_cover": 98.0,
+                        "humidity": 91.0
+                    },
+                    {
+                        "year": 2021,
+                        "temperature": 25.3,
+                        "pressure": 1009.2,
+                        "cloud_cover": 88.0,
+                        "humidity": 84.0
+                    }
+                ]
+            },
+            "space_environment": {
+                "kp_index_now": null,
+                "xray_flux_now": null,
+                "donki_trends": [
+                    {
+                        "year": 2024,
+                        "flare_count": 3,
+                        "peak_class": "M2.0",
+                        "flares": [
+                            {
+                                "peak_time": "2024-02-25T17:22Z",
+                                "class": "M2.0",
+                                "location": "N18W10",
+                                "region": 13590
+                            },
+                            {
+                                "peak_time": "2024-02-28T09:09Z",
+                                "class": "C5.1",
+                                "location": "S16E31",
+                                "region": null
+                            },
+                            {
+                                "peak_time": "2024-02-28T18:54Z",
+                                "class": "M1.5",
+                                "location": "N19W59",
+                                "region": 13590
+                            }
+                        ]
+                    },
+                    {
+                        "year": 2023,
+                        "flare_count": 8,
+                        "peak_class": "X2.0",
+                        "flares": [
+                            {
+                                "peak_time": "2023-02-25T15:40Z",
+                                "class": "M1.0",
+                                "location": "S28W04",
+                                "region": 13236
+                            },
+                            {
+                                "peak_time": "2023-02-25T19:44Z",
+                                "class": "M6.3",
+                                "location": "N25W42",
+                                "region": 13229
+                            },
+                            {
+                                "peak_time": "2023-02-28T17:50Z",
+                                "class": "M8.6",
+                                "location": "N28W30",
+                                "region": 13234
+                            },
+                            {
+                                "peak_time": "2023-03-01T01:07Z",
+                                "class": "M1.0",
+                                "location": "N26W33",
+                                "region": 13234
+                            },
+                            {
+                                "peak_time": "2023-03-02T04:50Z",
+                                "class": "C9.2",
+                                "location": "N20W55",
+                                "region": 13234
+                            },
+                            {
+                                "peak_time": "2023-03-02T21:16Z",
+                                "class": "M3.8",
+                                "location": "N20W65",
+                                "region": 13234
+                            },
+                            {
+                                "peak_time": "2023-03-03T10:32Z",
+                                "class": "M3.2",
+                                "location": "N20W70",
+                                "region": 13234
+                            },
+                            {
+                                "peak_time": "2023-03-03T17:52Z",
+                                "class": "X2.0",
+                                "location": "N20W75",
+                                "region": 13234
+                            }
+                        ]
+                    }
+                ],
+                "mag_declination_pr": 0,
+                "sun_pos_pr": [
+                    255.12,
+                    -78.82
+                ],
+                "moon_pos_pr": [
+                    306.11,
+                    54.53
+                ],
+                "objects_predicted": []
+            },
+            "surface": {
+                "height_msl": 10.0,
+                "slope_degree": 2.65,
+                "terrain_type": "Flat Plain"
+            },
+            "aviation": {
+                "shedules_now": []
+            }
+        }
+    ],
+    "predicted": [
+        {
+            "pressure_pr": 885.35,
+            "visibility_pr": 24000,
+            "cloud_cover_pr": 50,
+            "humidity_pr": 30,
+            "temperature_pr": 1.0,
+            "flare_pr": "B2.5",
+            "aqi_pr": 110.0,
+            "avg_wind_speed_pr": 10.0,
+            "max_wind_speed_pr": 25.0,
+            "kp_pr": 2.5,
+            "wind_degrees_pr": [
+                245,
+                245,
+                200,
+                250,
+                270,
+                280,
+                285,
+                275,
+                260,
+                240
+            ],
+            "prediction_confidence": 85
+        },
+        {
+            "pressure_pr": 1011.6,
+            "visibility_pr": 24140,
+            "cloud_cover_pr": 41,
+            "humidity_pr": 82,
+            "temperature_pr": 26.7,
+            "flare_pr": "C1.0",
+            "aqi_pr": 102,
+            "avg_wind_speed_pr": 9.45,
+            "max_wind_speed_pr": 19.77,
+            "kp_pr": 1.0,
+            "wind_degrees_pr": [
+                50,
+                52,
+                70,
+                80,
+                56,
+                218,
+                185,
+                291,
+                102,
+                264
+            ],
+            "prediction_confidence": 85
+        }
+    ],
+    "analytics": [
+        {
+            "review": "The atmospheric conditions at Jiuquan Satellite Launch Center for the target timestamp are favorable, with a predicted visibility of 24000 meters and a pressure of 885.35 hPa. The wind speed is 25.0 m/s, which is within the acceptable range. The geomagnetic activity is low with a Kp index of 2.5, and there are no significant solar flares predicted. The terrain is flat, and there are no active aircraft in the vicinity.",
+            "risks": [
+                "High wind speed (25.0 m/s) near the launch window, which could affect launch stability.",
+                "Moderate air quality index (AQI) of 110, which may impact crew comfort and equipment performance."
+            ],
+            "recommendations": "Monitor wind conditions closely and ensure all systems are robust against high wind speeds. Consider air quality management to maintain optimal conditions for crew and equipment.",
+            "verdict": "Launch conditions are favorable with minor risks that can be managed.",
+            "lcs": 60.3
+        },
+        {
+            "review": "The atmospheric conditions at the Guiana Space Centre are favorable with a pressure surface of 1011.6 hPa, visibility of 24140 meters, and a cloud cover of 41%. The average wind speed is 9.45 m/s with a maximum of 19.77 m/s, which is within acceptable limits. The geomagnetic activity is low with a Kp index of 1.0, and there are no significant solar flares predicted. The terrain is flat, and there are no active aircraft in the vicinity.",
+            "risks": [
+                "High average wind speed near the launch window.",
+                "Low geomagnetic activity index (Kp=1.0)."
+            ],
+            "recommendations": "Monitor wind conditions closely, especially near the launch window. Ensure geomagnetic activity remains stable and consider backup plans if conditions deteriorate.",
+            "verdict": "Launch conditions are favorable with minor risks.",
+            "lcs": 75.34
+        }
+    ],
+    "comparison": {}
+}

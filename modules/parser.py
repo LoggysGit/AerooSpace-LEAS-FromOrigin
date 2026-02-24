@@ -722,7 +722,7 @@ CALCULATION:
         max_wind_speed = int(data["max_wind_speed_pr"]) if "max_wind_speed_pr" in data else 0
         avg_wind_speed = int(data["avg_wind_speed_pr"]) if "avg_wind_speed_pr" in data else 0
 
-        flights = int(data["aviation"]["shedules_now"])
+        flights = len(data["aviation"]["shedules_now"])
         
         wind_degrees = data["wind_degrees_pr"] if "wind_degrees_pr" in data else []
         

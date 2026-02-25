@@ -5,6 +5,7 @@ assets/.devnotes/*
 modules/__pycache__/*.pyc
 resources/.devlog/*.log
 resources/reports/*.json
+resources/settings.json
 
 # Unused fonts
 assets/fonts/JetBrainsMono/JetBrainsMonoNL-Bold.ttf

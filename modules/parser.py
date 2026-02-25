@@ -722,7 +722,7 @@ CALCULATION:
         max_wind_speed = int(data["max_wind_speed_pr"]) if "max_wind_speed_pr" in data else 0
         avg_wind_speed = int(data["avg_wind_speed_pr"]) if "avg_wind_speed_pr" in data else 0
 
-        flights = len(data["aviation"]["shedules_now"])
+        flights = data["flight_shedules_pr"]
         
         wind_degrees = data["wind_degrees_pr"] if "wind_degrees_pr" in data else []
         
@@ -824,8 +824,9 @@ INPUT DATA:
     "historical_normals": {self.data["weather_summary"]["weather_normal"]},
     "aqi_history": {self.data["aqi_trends"]},
     "solar_activity_history": {self.data["space_environment"]["donki_trends"]},
-    "current_wind_profile": {self.data["wind_profile_now"]} // IMPORTANT: This parameter is list of lists [Altitude(m), Speed(m/s), Direction(deg), Temp(C)]
-}}
+    "current_wind_profile": {self.data["wind_profile_now"]}, // IMPORTANT: This parameter is list of lists [Altitude(m), Speed(m/s), Direction(deg), Temp(C)]
+    "flights_near_now": {self.data["aviation"]}
+    }}
 
 TASK:
 1. Compare "current_state" with "historical_normals". 
@@ -852,6 +853,7 @@ RETURN ONLY A VALID JSON OBJECT:
     "avg_wind_speed_pr": float,
     "max_wind_speed_pr": float,
     "kp_pr": float,
+    "flight_shedules_pr": int, // Estimated number of flights near point in the target date
     "wind_degrees_pr": [int, int, int, int, int, int, int, int, int, int] // 10 values for different altitudes
     "prediction_confidence": int // Overall confidence in the prediction (0-100)%. The more far the target time from now, the lower must be this parameter. Also, lower this parameter if some fetched data is missing
 }}
@@ -883,6 +885,3 @@ PREDICTION CONFIDENCE: {self.predicted.get("prediction_confidence", 0)}%
 {prompts["output_format"]}
         '''
         return overall_prompt
-    
-    def logError(self, text): log.throwError(text)
-    def closeLog(self, file_name): log.save(file_name)

@@ -8,8 +8,6 @@ from datetime import datetime
 import modules.controller as model  # AI Model Controller
 import modules.parser as fetcher # Data Parser
 
-import asyncio
-
 # === Constants ===
 MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
 PROMPTS_JSON_PATH = "resources/prompts.json"
@@ -67,21 +65,6 @@ Return ONLY a valid JSON object. No prose before or after.
 }}
 """
 
-inps = [
-    {
-        "spaceport": "Hokkaido Spaceport",
-        "coordinates": [42.5028, 143.4414], # Япония, северный космодром
-        "target_timestamp": "2026-03-01T10:00:00Z",
-        "timezone": "UTC+9",
-    },
-    {
-        "spaceport": "Alcantara Launch Center",
-        "coordinates": [-2.3731, -44.3964], # Бразилия, экватор (идеально для S3/S5)
-        "target_timestamp": "2026-03-05T15:00:00Z",
-        "timezone": "UTC-3",
-    },
-]
-
 async def analyseAllPoints(points):
     with open(PROMPTS_JSON_PATH, 'r', encoding='utf-8') as f: prompts = json.load(f)
     ai.setRole(prompts["role"])
@@ -91,21 +74,16 @@ async def analyseAllPoints(points):
         print(" = POINTS ANALYSIS STARTED... = ")
         try:
             pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
-            print("Pr, rompt updated!")
 
             fetched_data = data_fetcher.getFetchedData()
             fetched.append(copy.deepcopy(fetched_data))
 
-            print(f"!!!!!!!!!!!!!! Fetched: {fetched_data}, predicted: {pr}")
-
             predicted.append(pr)
-
-            print(pr)
 
             review = await ai.analyze(prompt)
             analytics.append(review)
             print(" = POINTS ANALYZED SUCCESSFULLY! = ")
-        except Exception as e: data_fetcher.logError(f" = ANALYZING ERROR: {e} = ")
+        except Exception as e: print(f" = ANALYZING ERROR: {e} = ")
 
     comparsion = ""
     if len(points) > 1:
@@ -162,6 +140,3 @@ def save_report(points, fetched, predicted, analytics, comparsion):
     except Exception as e:
         print(f"[A]: Failed to save file: {e}")
         return "logError.json"
-
-# Test
-asyncio.run(analyseAllPoints(inps))

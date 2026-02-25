@@ -13,6 +13,7 @@ timezonefinder
 pytz
 
 # AI Engine
+huggingface_hub
 llama-cpp-python>=0.2.79
 
 # Smart Web Scraping

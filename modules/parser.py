@@ -17,8 +17,6 @@ import geomag
 import ephem
 import skyfield.api as sf
 
-import modules.logger as logger
-
 # - Constants & Defines -
 PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'prompts.json')
 # Altitude to Pressure Mapping
@@ -50,8 +48,6 @@ APIS = {
     # Flights
     "AVIATION_TRAFFIC": "https://opensky-network.org/api/states/all",
 }
-# - Classes -
-log = logger.Logger("resources/reports/debug/")
 
 class DataControlManager:
     spaceport_def = False
@@ -81,8 +77,8 @@ class DataControlManager:
             if match:
                 clean_json = match.group(1)
                 self.predicted = json.loads(clean_json)
-            else:   log.write("[P] JSON not found in the prediction response: ", parameters)
-        except json.JSONDecodeError as e:   log.write(f"[P] Predicted Data Parsing Error: {e}")
+            else:   print("[P] JSON not found in the prediction response: ", parameters)
+        except json.JSONDecodeError as e:   print(f"[P] Predicted Data Parsing Error: {e}")
 
     def utc_time(self, input_time, timezone):
         raw_offset = timezone.replace("UTC", "").strip()
@@ -179,7 +175,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write(f"[*] Requesting Atmospheric Data for: {lat}, {lon}...")
+                print(f"[*] Requesting Atmospheric Data for: {lat}, {lon}...")
                 response = await client.get(APIS["METEO"], params=params)
 
                 if response.status_code == 200:
@@ -209,12 +205,12 @@ class DataControlManager:
 
                     self.data["wind_profile_now"] = new_profile
 
-                    log.write(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
+                    print(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
                 else:
-                    log.write(f"[!] API Error: {response.status_code}")
+                    print(f"[!] API Error: {response.status_code}")
 
             except Exception as e:
-                log.write(f"[X] Connection Error: {e}")
+                print(f"[X] Connection Error: {e}")
 
     async def parseWAQI(self, lat, lon): # --- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ---
         url = APIS["WAQI"] + f"{lat};{lon}/"
@@ -222,7 +218,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write(f"[*] Requesting Air Quality for: {lat}, {lon}...")
+                print(f"[*] Requesting Air Quality for: {lat}, {lon}...")
                 response = await client.get(url, params=params)
 
                 if response.status_code == 200:
@@ -237,10 +233,10 @@ class DataControlManager:
                         self.data["aqi_now"]["o3"] = iaqi.get("o3", {}).get("v", None)
                         self.data["aqi_now"]["co"] = iaqi.get("co", {}).get("v", None)
 
-                        log.write(f"[V] Success! AQI data updated.")
-                    else:   log.write(f"[!] WAQI Error: {res.get('data')}")
-                else:   log.write(f"[!] API Error: {response.status_code}")
-            except Exception as e:  log.write(f"[X] Connection Error: {e}")
+                        print(f"[V] Success! AQI data updated.")
+                    else:   print(f"[!] WAQI Error: {res.get('data')}")
+                else:   print(f"[!] API Error: {response.status_code}")
+            except Exception as e:  print(f"[X] Connection Error: {e}")
 
     async def parseDONKI(self): # --- NASA DONKI - DATA: [kp_index, xray_flux] ---
         # Yesterday - now
@@ -254,7 +250,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write("[*] Requesting REAL-TIME NASA Space Weather...")
+                print("[*] Requesting REAL-TIME NASA Space Weather...")
                 gst_resp = await client.get(APIS["NASA_DONKI"] + "GST", params=params)
                 flr_resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
 
@@ -273,9 +269,9 @@ class DataControlManager:
                     flr_data = flr_resp.json()
                     if flr_data: self.data["space_environment"]["xray_flux_now"] = flr_data[-1].get('classType', 'B')
 
-                log.write(f"[V] Success! Space Weather is synced with current time.")
+                print(f"[V] Success! Space Weather is synced with current time.")
             except Exception as e:
-                log.write(f"[X] NASA Connection Error: {e}")
+                print(f"[X] NASA Connection Error: {e}")
 
     async def getSpaceTrack(self): # --- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ---
         auth_data = {
@@ -285,26 +281,26 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write("[*] Authenticating with Space-Track...")
+                print("[*] Authenticating with Space-Track...")
                 auth_resp = await client.post(APIS["SPACETRACK_AUTH"], data=auth_data)
 
                 if auth_resp.status_code == 200 and "set-cookie" in auth_resp.headers:
-                    log.write("[+] Authentication successful. Fetching TLE data...")
+                    print("[+] Authentication successful. Fetching TLE data...")
                     tle_resp = await client.get(APIS["SPACETRACK_QUERY"], cookies=auth_resp.cookies)
 
                     if tle_resp.status_code == 200:
                         tle_data = tle_resp.json()
-                        log.write(f"[V] Reсieved {len(tle_data)} space objects from Space-Track.")
+                        print(f"[V] Reсieved {len(tle_data)} space objects from Space-Track.")
                         return tle_data
                     else:
-                        log.write(f"[!] TLE API Error: {tle_resp.status_code}")
+                        print(f"[!] TLE API Error: {tle_resp.status_code}")
                         return []
                 else:
-                    log.write(f"[-] Authentication Failed: {auth_resp.status_code}")
+                    print(f"[-] Authentication Failed: {auth_resp.status_code}")
                     return []
 
             except Exception as e:
-                log.write(f"[X] Space-Track Connection Error: {e}")
+                print(f"[X] Space-Track Connection Error: {e}")
                 return []
 
     async def getNearestICAO(self, lat:float, lon:float): # --- [X] ICAO NEAR COORINATESDS (NOT IN USE) ---
@@ -319,11 +315,11 @@ class DataControlManager:
                     if isinstance(result, list) and len(result) > 0:
                         icao = result[0].get('station', {}).get('icao')
                         if icao: return icao
-                    log.write(f"[-] No station found for coords: {lat}, {lon}")
+                    print(f"[-] No station found for coords: {lat}, {lon}")
                 else:
-                    log.write(f"[!] Station lookup API error: {resp.status_code}")
+                    print(f"[!] Station lookup API error: {resp.status_code}")
             except Exception as e:
-                log.write(f"[X] Station lookup connection failed: {e}")
+                print(f"[X] Station lookup connection failed: {e}")
 
         return None
 
@@ -340,7 +336,7 @@ class DataControlManager:
             "lomax": lon + lon_delta
         }
 
-        log.write("[*] Recieving flights...")
+        print("[*] Recieving flights...")
         async with httpx.AsyncClient() as client:
             try:
                 resp = await client.get(APIS["AVIATION_TRAFFIC"], params=params, timeout=10.0)
@@ -359,15 +355,15 @@ class DataControlManager:
                         })
 
                     self.data["aviation"]["shedules_now"] = flights
-                    log.write(f"[V] Success! Flight shedules updated.")
-                else: log.write(f"[!] Flights API Error: {resp.status_code}")
-            except Exception as e:  log.write(f"[X] Flights API Error: {e}")
+                    print(f"[V] Success! Flight shedules updated.")
+                else: print(f"[!] Flights API Error: {resp.status_code}")
+            except Exception as e:  print(f"[X] Flights API Error: {e}")
 
     # -------------- STRATEGIC FUNCTIONS --------------
 
     async def getWeatherNormal(self, lat, lon, target_time):
         all_history_points = []
-        log.write(f"[*] Fetching historical context for {HISTORY_WINDOW_YEARS} years...")
+        print(f"[*] Fetching historical context for {HISTORY_WINDOW_YEARS} years...")
         async with httpx.AsyncClient() as client:
             for i in range(1, HISTORY_WINDOW_YEARS + 1):
                 # 3-day window around the same date in past years
@@ -393,10 +389,10 @@ class DataControlManager:
                                 "humidity": round(sum(h['relative_humidity_2m'])/len(h['relative_humidity_2m']), 0)
                             }
                             all_history_points.append(year_stat)
-                            log.write(f"[>V] Year {past_year} data loaded.")
-                except Exception as e:  log.write(f"[>!] Year {past_year} fetch error: {e}")
+                            print(f"[>V] Year {past_year} data loaded.")
+                except Exception as e:  print(f"[>!] Year {past_year} fetch error: {e}")
         self.data["weather_summary"]["weather_normal"] = all_history_points
-        log.write(f"[V] Loaded {len(all_history_points)} historical data points.")
+        print(f"[V] Loaded {len(all_history_points)} historical data points.")
 
     async def getAQITrends(self, target_time):
         date_str = target_time.strftime("%Y-%m-%d")
@@ -411,7 +407,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write(f">[*] Fetching AQI Forecast for {date_str}...")
+                print(f">[*] Fetching AQI Forecast for {date_str}...")
                 resp = await client.get(fetch_address)
 
                 if resp.status_code == 200:
@@ -427,20 +423,20 @@ class DataControlManager:
                         "o3": h_data.get("ozone", [])[target_hour],
                         "co": h_data.get("carbon_monoxide", [])[target_hour]
                     }
-                    log.write(f">[V] AQI Forecast retrieved for {date_str}.")
+                    print(f">[V] AQI Forecast retrieved for {date_str}.")
                     return trend
                 else:
-                    log.write(f">[!] AQI Trends API Error: {resp.status_code}")
+                    print(f">[!] AQI Trends API Error: {resp.status_code}")
                     return []
 
             except Exception as e:
-                log.write(f">[X] AQI Trends Connection Error: {e}")
+                print(f">[X] AQI Trends Connection Error: {e}")
                 return []
 
     async def predictDONKI(self, target_time):
         trends = []
 
-        log.write(f"[*] Analyzing solar trends for the last {HISTORY_WINDOW_YEARS} years...")
+        print(f"[*] Analyzing solar trends for the last {HISTORY_WINDOW_YEARS} years...")
 
         async with httpx.AsyncClient() as client:
             for i in range(1, HISTORY_WINDOW_YEARS + 1):
@@ -479,13 +475,13 @@ class DataControlManager:
                                 } 
                                 for f in flares]
                         })
-                    else:   log.write(f">[!] NASA DONKI API Error for year {start_dt.year}: {resp.status_code}")
+                    else:   print(f">[!] NASA DONKI API Error for year {start_dt.year}: {resp.status_code}")
 
                 except Exception as e:
-                    log.write(f">[X] Trend error for year {start_dt.year}: {e}")
+                    print(f">[X] Trend error for year {start_dt.year}: {e}")
                     continue
         self.data["space_environment"]["donki_trends"] = trends
-        log.write(f"[V] Trend analysis complete. {len(trends)} years processed.")
+        print(f"[V] Trend analysis complete. {len(trends)} years processed.")
 
     async def processSpaceObjects(self, lat, lon, target_time, objects):
         ts = sf.load.timescale()
@@ -493,7 +489,7 @@ class DataControlManager:
 
         observer = sf.wgs84.latlon(lat, lon)
 
-        log.write("[*] Processing TLE data...")
+        print("[*] Processing TLE data...")
         processed = []
         for obj in objects:
             try:
@@ -521,9 +517,9 @@ class DataControlManager:
                         },
                         "is_visible": alt_val > 500 # Can we see it physically (or will be in 10 minutes)
                     })
-                log.write(">[V] TLE Object processed")
+                print(">[V] TLE Object processed")
             except Exception as e:
-                log.write(f">[!] TLE Object process error: {e}")
+                print(f">[!] TLE Object process error: {e}")
                 continue
 
         processed.sort(key=lambda x: x['position_prediction']['range_km']) # Sort by nearest
@@ -545,7 +541,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write(f"[*] Requesting OSM for: {lat}, {lon}...")
+                print(f"[*] Requesting OSM for: {lat}, {lon}...")
                 response = await client.get(APIS["OSM"], params=params, headers=headers)
 
                 if response.status_code == 200:
@@ -562,12 +558,12 @@ class DataControlManager:
 
                     self.data["location"]["name"] = f"{country}-{city}"
 
-                    log.write(f"[V] Success! Location identified.")
+                    print(f"[V] Success! Location identified.")
                 else:
-                    log.write(f"[!] API Error: {response.status_code}")
+                    print(f"[!] API Error: {response.status_code}")
 
             except Exception as e:
-                log.write(f"[X] Connection Error: {e}")
+                print(f"[X] Connection Error: {e}")
 
     async def parseOpenTopo(self, lat, lon, m=55):  # -------------------  OSM - DATA: [Surface: *] -------------------
         delta = m * 0.00001
@@ -587,7 +583,7 @@ class DataControlManager:
 
         async with httpx.AsyncClient() as client:
             try:
-                log.write(f"[*] Requesting Elevation & Slope for: {lat}, {lon}...")
+                print(f"[*] Requesting Elevation & Slope for: {lat}, {lon}...")
                 response = await client.get(APIS["OPENTOPO"], params=params)
 
                 if response.status_code == 200:
@@ -618,18 +614,18 @@ class DataControlManager:
                         elif slope > 13: self.data["surface"]["terrain_type"] = "Mountainous"
                         else: self.data["surface"]["terrain_type"] = "Flat Plain"
 
-                        log.write(f"[V] Success! Surface profile updated.")
+                        print(f"[V] Success! Surface profile updated.")
                     else:
-                        log.write("[!] Not enough points for slope calculation.")
+                        print("[!] Not enough points for slope calculation.")
                 else:
-                    log.write(f"[!] API Error: {response.status_code}")
+                    print(f"[!] API Error: {response.status_code}")
 
             except Exception as e:
-                log.write(f"[X] Connection Error: {e}")
+                print(f"[X] Connection Error: {e}")
 
     async def calculateLocal(self, lat, lon, alt, target_utc_time): # ------------------- LOCAL CALCULATING [Magnetosphere, Sun, Moon] -------------------
         try:
-            log.write(f"[*] Calculating celestial and magnetic data for {target_utc_time}...")
+            print(f"[*] Calculating celestial and magnetic data for {target_utc_time}...")
 
             # --- Sun & Moon ---
             observer = ephem.Observer()
@@ -660,10 +656,10 @@ class DataControlManager:
 
             self.data["space_environment"]["mag_declination_pr"] = round(dec, 2)
 
-            log.write(f"[V] Local calculations complete.")
+            print(f"[V] Local calculations complete.")
 
         except Exception as e:
-            log.write(f"[X] Calculation Error: {e}")
+            print(f"[X] Calculation Error: {e}")
 
     def calculate_aqi(self, aqi_data):
         limits = {
@@ -762,7 +758,6 @@ CALCULATION:
     # ================================== MAIN ====================================
     
     async def fetchAllData(self):
-        log.start_log()
         lat, lon = self.input_data["coordinates"]
         target_time, tz = self.input_data["target_timestamp"], self.input_data["timezone"]
         input_time = self.utc_time(target_time, tz)
@@ -775,7 +770,7 @@ CALCULATION:
         await self.getWeatherNormal(lat, lon, input_time)
         # WAQI
         await self.parseWAQI(lat, lon)
-        log.write(f"[*] Fetching AQI History for {HISTORY_WINDOW_YEARS} years")
+        print(f"[*] Fetching AQI History for {HISTORY_WINDOW_YEARS} years")
         for i in range(1, HISTORY_WINDOW_YEARS + 1):
             past_time = input_time - relativedelta(years=i)
             archive_data = await self.getAQITrends(past_time)

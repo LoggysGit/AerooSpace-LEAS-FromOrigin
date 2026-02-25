@@ -1,13 +1,16 @@
 from llama_cpp import Llama
 import asyncio
 
+import modules.setup as setuper
+
 class AIModel:
     def __init__(self, model_path, role=""):
+        setuper.get_model()
         self.llm = Llama(
             model_path=model_path,
-            n_gpu_layers=8,  # Offload layers
+            n_gpu_layers=8,    # Offload layers
             n_ctx=32768,       # Context window
-            verbose=False     # Disable logs for clean output
+            verbose=False      # Disable logs for clean output
         )
         self.role = role
         self.chat_history = [{"role": "system", "content": self.role}]

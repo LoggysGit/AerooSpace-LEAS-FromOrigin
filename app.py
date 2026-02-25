@@ -9,7 +9,7 @@ from timezonefinder import TimezoneFinder
 import pytz
 import calendar
 from dotenv import load_dotenv, set_key
-from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit)
+from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit, QMessageBox)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon
 from PySide6.QtCore import Qt, Signal, QThread, QSize
 # === Modules ===
@@ -135,16 +135,14 @@ class SettingsWindow(QWidget):
         super().__init__()
         self.setWindowTitle("LEAS FromOrigin - Settings")
         self.resize(1080, 720)
-        self.setStyleSheet(STYLE_SHEET)
         self.setup_ui()
         self.load_settings_from_env()
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         
         content_widget = QWidget()
         self.layout = QVBoxLayout(content_widget)
@@ -152,26 +150,24 @@ class SettingsWindow(QWidget):
         self.layout.setContentsMargins(20, 20, 20, 20)
 
         self.layout.addWidget(QLabel("<b>LICENSE KEYS</b>"))
-        
         self.app_key_input = self._create_input_group("Application Key:", "APP_KEY")
         self.acc_key_input = self._create_input_group("Account Key:", "ACC_KEY")
 
-        line = QFrame(); line.setFrameShape(QFrame.HLine); line.setFrameShadow(QFrame.Sunken)
+        line = QFrame(); line.setFrameShape(QFrame.Shape.HLine); line.setFrameShadow(QFrame.Shadow.Sunken)
         self.layout.addWidget(line)
         self.layout.addWidget(QLabel("<b>API INTEGRATIONS</b>"))
 
         self.nasa_input = self._create_input_group("NASA API Key:", "NASA_API_KEY")
-        self.waqi_input = self._create_input_group("WAQI API Key:", "WAQI_API_KEY")
+        self.waqi_input = self._create_input_group("WAQI API Key:", "WAQI_TOKEN")
         
-        st_label = QLabel("Space-Track Credentials:")
-        self.layout.addWidget(st_label)
+        self.layout.addWidget(QLabel("Space-Track Credentials:"))
         st_layout = QHBoxLayout()
         self.st_user = QLineEdit(); self.st_user.setPlaceholderText("Username / Email")
-        self.st_pass = QLineEdit(); self.st_pass.setPlaceholderText("Password"); self.st_pass.setEchoMode(QLineEdit.Password)
+        self.st_pass = QLineEdit(); self.st_pass.setPlaceholderText("Password"); self.st_pass.setEchoMode(QLineEdit.EchoMode.Password)
         
         st_apply_btn = QPushButton("Apply")
         st_apply_btn.setFixedWidth(80)
-        st_apply_btn.clicked.connect(lambda: self.save_to_env("SPACETRACK_USER", self.st_user.text()) or self.save_to_env("SPACETRACK_PASS", self.st_pass.text()))
+        st_apply_btn.clicked.connect(self.save_spacetrack)
 
         st_layout.addWidget(self.st_user)
         st_layout.addWidget(self.st_pass)
@@ -186,16 +182,12 @@ class SettingsWindow(QWidget):
         self.layout.addWidget(self.error_console)
 
         self.layout.addStretch()
-
         scroll.setWidget(content_widget)
         main_layout.addWidget(scroll)
 
         footer_layout = QHBoxLayout()
         version_label = QLabel("v1.0.4-stable")
-        version_label.setStyleSheet("color: gray; font-size: 10px;")
         team_label = QLabel("QuazarX Team, AEROO SPACE Competition")
-        team_label.setStyleSheet("color: gray; font-size: 10px;")
-        
         footer_layout.addWidget(version_label)
         footer_layout.addStretch()
         footer_layout.addWidget(team_label)
@@ -205,43 +197,56 @@ class SettingsWindow(QWidget):
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        
-        lbl = QLabel(label_text)
-        layout.addWidget(lbl)
-        
+        layout.addWidget(QLabel(label_text))
         h_layout = QHBoxLayout()
         line_edit = QLineEdit()
         btn = QPushButton("Apply")
         btn.setFixedWidth(80)
-        
         btn.clicked.connect(lambda: self.save_to_env(env_key, line_edit.text()))
-        
         h_layout.addWidget(line_edit)
         h_layout.addWidget(btn)
         layout.addLayout(h_layout)
-        
         self.layout.addWidget(container)
         return line_edit
 
+    def update_json_status(self):
+        required = [
+            self.nasa_input.text().strip(),
+            self.waqi_input.text().strip(),
+            self.st_user.text().strip(),
+            self.st_pass.text().strip()
+        ]
+        status = all(required)
+        settings_path = os.path.join("resources", "settings.json")
+        try:
+            data = {}
+            if os.path.exists(settings_path):
+                with open(settings_path, 'r') as f: data = json.load(f)
+            data["set_keys"] = status
+            with open(settings_path, 'w') as f: json.dump(data, f, indent=4)
+        except Exception as e: self.error_console.append(f"[ERROR] JSON Update: {e}")
+
+    def save_to_env(self, key, value):
+        try:
+            set_key(".env", key, value)
+            self.error_console.append(f"[SUCCESS] Saved {key}")
+            self.update_json_status()
+        except Exception as e: self.error_console.append(f"[ERROR] {key}: {e}")
+
+    def save_spacetrack(self):
+        self.save_to_env("SPACETRACK_USER", self.st_user.text())
+        self.save_to_env("SPACETRACK_PASS", self.st_pass.text())
+
     def load_settings_from_env(self):
-        if not os.path.exists(ENVIRONMENT_PATH): open(ENVIRONMENT_PATH, 'a').close()
-            
-        load_dotenv(ENVIRONMENT_PATH)
-        
+        if not os.path.exists(".env"): open(".env", 'a').close()
+        load_dotenv(".env")
         self.app_key_input.setText(os.getenv("APP_KEY", ""))
         self.acc_key_input.setText(os.getenv("ACC_KEY", ""))
         self.nasa_input.setText(os.getenv("NASA_API_KEY", ""))
         self.waqi_input.setText(os.getenv("WAQI_TOKEN", ""))
         self.st_user.setText(os.getenv("SPACETRACK_USER", ""))
-        self.st_pass.setText(os.getenv("SPACETRACK_PASSWORD", ""))
-
-    def save_to_env(self, key, value):
-        try:
-            set_key(ENVIRONMENT_PATH, key, value)
-            self.error_console.append(f"[SUCCESS] Saved {key}")
-        except Exception as e: self.error_console.append(f"[ERROR] Failed to save {key}: {str(e)}")
-
-    def apply_settings(self): self.load_settings_from_env()
+        self.st_pass.setText(os.getenv("SPACETRACK_PASS", ""))
+        self.update_json_status()
 
 class AnalyticsWindow(QWidget):
     def __init__(self, file_path):
@@ -316,6 +321,13 @@ class AnalyticsWindow(QWidget):
         self.verdict_display = QTextEdit()
         self.verdict_display.setObjectName("VerdictDisplay")
         self.verdict_display.setReadOnly(True)
+        self.verdict_display.setStyleSheet("""
+    #VerdictDisplay {
+        font-family: 'JetBrains Mono';
+        font-size: 14pt;
+        font-weight: bold;
+    }
+""")
         verdict_col.addWidget(self.verdict_display)
 
         self.score_label = QLabel("LCS: --")
@@ -356,42 +368,51 @@ class AnalyticsWindow(QWidget):
         bottom_row.addLayout(sim_col, 1)
 
         # Analytics
-        chat_col = QVBoxLayout()
-        chat_col.addWidget(QLabel("Model Review"))
+        info_col = QVBoxLayout()
+        info_col.addWidget(QLabel("Model Review"))
         self.review_display = QTextEdit()
         self.review_display.setObjectName("ReviewDisplay")
         self.review_display.setReadOnly(True)
-        self.review_display.setMinimumHeight(150)
-        chat_col.addWidget(self.review_display)
+        self.review_display.setMinimumHeight(140)
+        info_col.addWidget(self.review_display)
 
-        chat_col.addWidget(QLabel("Recommendations"))
+        info_col.addWidget(QLabel("Recommendations"))
         self.recommendations_text = QTextEdit()
         self.recommendations_text.setObjectName("ChatDisplay")
         self.recommendations_text.setReadOnly(True)
-        self.recommendations_text.setMinimumHeight(200)
-        chat_col.addWidget(self.recommendations_text)
+        self.recommendations_text.setMinimumHeight(100)
+        info_col.addWidget(self.recommendations_text)
 
-        chat_col.addWidget(QLabel("Risks"))
+        info_col.addWidget(QLabel("Risks"))
         self.risks_view = QTextEdit()
         self.risks_view.setObjectName("RisksDisplay")
         self.risks_view.setReadOnly(True)
-        self.risks_view.setMaximumHeight(100)
-        chat_col.addWidget(self.risks_view)
+        self.risks_view.setMaximumHeight(140)
+        info_col.addWidget(self.risks_view)
         
-        bottom_row.addLayout(chat_col, 1)
+        bottom_row.addLayout(info_col, 1)
         self.content_layout.addLayout(bottom_row)
 
         scroll.setWidget(self.scroll_widget)
         window_layout.addWidget(scroll)
 
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Plain)
+        line.setLineWidth(1)
+        line.setStyleSheet("color: #3e3e3e;")
+        self.content_layout.addWidget(line)
+
         # - Comparing -
         compare_field = QHBoxLayout()
-        compare_field.addWidget(QLabel("Comparing"))
         self.comparetext = QTextEdit()
-        self.comparetext.setObjectName("RisksDisplay")
+        self.comparetext.setObjectName("ReviewDisplay")
         self.comparetext.setReadOnly(True)
-        self.comparetext.setMaximumHeight(300)
-        window_layout.addLayout(compare_field)
+        self.comparetext.setMinimumHeight(200)
+        compare_field.addWidget(self.comparetext)
+        
+        # Добавляем в основной вертикальный лейаут контента, а не в строку
+        self.content_layout.addLayout(compare_field)
 
         # --- Chat ---
         #chat_input_area = QHBoxLayout()
@@ -440,10 +461,13 @@ class AnalyticsWindow(QWidget):
             self.recommendations_text.setPlainText(f"{analytics['recommendations']}")
 
             self.comparetext.setText(f"""
-COMPARSION: {comparison["comparing"]}
-VERDICT: {comparison["final_verdict"]}
-BEST: {comparison["best"]}
-RECOMMENDATIONS: {comparison["recommendations"]}
+COMPARSION: {comparison[0]["comparing"]}
+
+VERDICT: {comparison[0]["final_verdict"]}
+
+BEST: {comparison[0]["best"]}
+
+RECOMMENDATIONS: {comparison[0]["recommendations"]}
 """)
             
         except IndexError: print(f"[UI] Error: Point {index} data missing in JSON")
@@ -704,48 +728,70 @@ class AerooSpaceApp(QWidget):
         self.settings_window.show()
 
     def start_analyzing(self, btn):
-        print("[A] ANALYZING STARTED!")
-        btn.setEnabled(False)
-        self.show_loading()
-        
-        mission_input = []
-        
-        print(f"Containers found: {len(self.point_containers)}")
-        
-        for container in self.point_containers:
-            try:
-                lat_w = container.findChild(QLineEdit, "lat_input")
-                lon_w = container.findChild(QLineEdit, "lon_input")
-                y_w = container.findChild(QLineEdit, "year_input")
-                m_w = container.findChild(QLineEdit, "month_input")
-                d_w = container.findChild(QLineEdit, "day_input")
-                tz_w = container.findChild(QLineEdit, "tz_input")
-                sp_w = container.findChild(QComboBox, "spaceport_input")
+        try:
+            with open(r"resources\settings.json", 'r') as f: 
+                settings = json.load(f)
+                keys_status = settings.get("set_keys", False)
 
-                if not all([lat_w, lon_w, y_w, m_w, d_w, tz_w, sp_w]):
-                    print("[A] Error: Some widgets missing in this container. Operation aborted.")
-                    break
+            if not keys_status:
+                QMessageBox.warning(self, "Settings", "Please configure API keys in settings first!")
+                return
 
-                lat_w_f = type(float(lat_w.text()))
-                lon_w_f = type(float(lon_w.text()))
-                if lat_w_f != float or lon_w_f != float:
-                    print(f"[A] Error: ({lat_w_f}, {lon_w_f}). Operation aborted.")
-                    break
-                else:
+            print("[A] ANALYZING STARTED!")
+            btn.setEnabled(False)
+            self.show_loading()
+
+            mission_input = []
+
+            for container in self.point_containers:
+                try:
+                    lat_w = container.findChild(QLineEdit, "lat_input")
+                    lon_w = container.findChild(QLineEdit, "lon_input")
+                    y_w = container.findChild(QLineEdit, "year_input")
+                    m_w = container.findChild(QLineEdit, "month_input")
+                    d_w = container.findChild(QLineEdit, "day_input")
+                    tz_w = container.findChild(QLineEdit, "tz_input")
+                    sp_w = container.findChild(QComboBox, "spaceport_input")
+
+                    if not all([lat_w, lon_w, y_w, m_w, d_w, tz_w, sp_w]):
+                        raise ValueError("Some input fields are missing!")
+
+                    try:
+                        lat_val = float(lat_w.text().replace(',', '.'))
+                        lon_val = float(lon_w.text().replace(',', '.'))
+                    except ValueError:
+                        QMessageBox.critical(self, "Input Error", f"Invalid coordinates format in point {len(mission_input)+1}")
+                        btn.setEnabled(True)
+                        return
+
                     point_dict = {
                         "spaceport": sp_w.currentText(),
-                        "coordinates": [float(lat_w.text()), float(lon_w.text())],
+                        "coordinates": [lat_val, lon_val],
                         "target_timestamp": f"{y_w.text()}-{m_w.text().zfill(2)}-{d_w.text().zfill(2)}T00:00:00Z",
                         "timezone": f"UTC{tz_w.text()}"
                     }
                     mission_input.append(point_dict)
-            except Exception as e: print(f"[A] Error during collection: {e}")
-        
-        # --- SENDING TO PROMPTER ---
-        self.worker = AnalysisWorker(mission_input, prompter)
-        self.worker.finished.connect(lambda f_name: self.on_analysis_finished(f_name, btn))
-        self.worker.error.connect(lambda err: self.on_analysis_error(err, btn))
-        self.worker.start()
+
+                except Exception as e:
+                    print(f"[A] Error during collection: {e}")
+                    QMessageBox.critical(self, "Data Error", f"Failed to collect data from point: {str(e)}")
+                    btn.setEnabled(True)
+                    return
+
+            if not mission_input:
+                QMessageBox.information(self, "Empty", "No mission points to analyze.")
+                btn.setEnabled(True)
+                return
+
+            self.worker = AnalysisWorker(mission_input, prompter)
+            self.worker.finished.connect(lambda f_name: self.on_analysis_finished(f_name, btn))
+            self.worker.error.connect(lambda err: self.on_analysis_error(err, btn))
+            self.worker.start()
+
+        except FileNotFoundError: QMessageBox.critical(self, "System Error", "settings.json not found in resources folder!")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred: {str(e)}")
+            btn.setEnabled(True)
 
     def on_analysis_finished(self, file_name, btn):
         try:

@@ -1,7 +1,10 @@
 .venv/
 .env
 *.gguf
-modules/__pycache__/
+assets/.devnotes/*
+modules/__pycache__/*.pyc
+resources/.devlog/*.log
+resources/reports/*.json
 
 # Unused fonts
 assets/fonts/JetBrainsMono/JetBrainsMonoNL-Bold.ttf

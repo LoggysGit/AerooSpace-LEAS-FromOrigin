@@ -1,7 +1,7 @@
 from llama_cpp import Llama
 import asyncio
 
-import modules.setup as setuper
+import modules.loader as setuper
 
 class AIModel:
     def __init__(self, model_path, role=""):

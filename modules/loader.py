@@ -1,5 +1,5 @@
 import os
-import sys
+import json
 from huggingface_hub import hf_hub_download
 
 def get_model():
@@ -9,11 +9,12 @@ def get_model():
     local_path = os.path.join(local_dir, filename)
 
     if os.path.exists(local_path):
+        update_settings(True)
         return local_path
 
     print("\n" + "="*50)
-    print("!!! MODEL NOT FOUND. DOWNLOADING (4.7 GB) !!!")
-    print("The application will freeze. DO NOT CLOSE IT.")
+    print("! MODEL NOT FOUND. DOWNLOADING !")
+    print("The application will open later. DO NOT CLOSE IT.")
     print("="*50 + "\n")
 
     try:
@@ -24,7 +25,19 @@ def get_model():
             local_dir_use_symlinks=False
         )
         print("\nSUCCESS: Model installed.")
+        update_settings(True)
         return path
     except Exception as e:
         print(f"\nFATAL ERROR: {e}")
+        update_settings(False)
         return None
+    
+def update_settings(status):
+    settings_path = os.path.join("resources", "settings.json")
+    try:
+        data = {}
+        if os.path.exists(settings_path): 
+            with open(settings_path, 'r') as f: data = json.load(f)
+        data["model"] = status
+        with open(settings_path, 'w') as f: json.dump(data, f, indent=4)
+    except Exception as e: print(f"[ERROR] Settings JSON Update: {e}")

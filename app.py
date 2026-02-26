@@ -224,7 +224,7 @@ class SettingsWindow(QWidget):
                 with open(settings_path, 'r') as f: data = json.load(f)
             data["set_keys"] = status
             with open(settings_path, 'w') as f: json.dump(data, f, indent=4)
-        except Exception as e: self.error_console.append(f"[ERROR] JSON Update: {e}")
+        except Exception as e: self.error_console.append(f"[ERROR] Settings Update: {e}")
 
     def save_to_env(self, key, value):
         try:

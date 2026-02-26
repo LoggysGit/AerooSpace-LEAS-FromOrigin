@@ -2,7 +2,7 @@
 .env
 *.gguf
 assets/.devnotes/*
-modules/__pycache__/*.pyc
+modules/__pycache__/
 resources/.devlog/*.log
 resources/reports/*.json
 resources/settings.json

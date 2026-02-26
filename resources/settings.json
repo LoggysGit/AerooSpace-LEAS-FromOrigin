@@ -1,3 +1,4 @@
 {
-    "set_keys": false
+    "set_keys": true,
+    "model": true
 }

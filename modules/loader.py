@@ -13,7 +13,7 @@ def get_model():
         return local_path
 
     print("\n" + "="*50)
-    print("! MODEL NOT FOUND. DOWNLOADING !")
+    print("MODEL NOT FOUND. DOWNLOADING")
     print("The application will open later. DO NOT CLOSE IT.")
     print("="*50 + "\n")
 

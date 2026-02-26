@@ -117,7 +117,7 @@ $$S_5 = 1 - e^{-0.1 \cdot Flights}$$
 ```bash
 git clone https://github.com/LoggysGit/AerooSpace-LEAS-FromOrigin
 pip install -r requirements.txt
-python main.py
+python app.py
 ```
 
 ## Конфигурация

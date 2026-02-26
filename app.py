@@ -159,6 +159,7 @@ class SettingsWindow(QWidget):
 
         self.nasa_input = self._create_input_group("NASA API Key:", "NASA_API_KEY")
         self.waqi_input = self._create_input_group("WAQI API Key:", "WAQI_TOKEN")
+        self.awvx_input = self._create_input_group("AVWX API Key:", "AVWX_TOKEN")
         
         self.layout.addWidget(QLabel("Space-Track Credentials:"))
         st_layout = QHBoxLayout()
@@ -214,7 +215,8 @@ class SettingsWindow(QWidget):
             self.nasa_input.text().strip(),
             self.waqi_input.text().strip(),
             self.st_user.text().strip(),
-            self.st_pass.text().strip()
+            self.st_pass.text().strip(),
+            self.awvx_input.text().strip()
         ]
         status = all(required)
         settings_path = os.path.join("resources", "settings.json")
@@ -234,8 +236,8 @@ class SettingsWindow(QWidget):
         except Exception as e: self.error_console.append(f"[ERROR] {key}: {e}")
 
     def save_spacetrack(self):
-        self.save_to_env("SPACETRACK_USER", self.st_user.text())
-        self.save_to_env("SPACETRACK_PASS", self.st_pass.text())
+        self.save_to_env("SPACETRACK_LOGIN", self.st_user.text())
+        self.save_to_env("SPACETRACK_PASSW", self.st_pass.text())
 
     def load_settings_from_env(self):
         if not os.path.exists(".env"): open(".env", 'a').close()
@@ -244,8 +246,9 @@ class SettingsWindow(QWidget):
         self.acc_key_input.setText(os.getenv("ACC_KEY", ""))
         self.nasa_input.setText(os.getenv("NASA_API_KEY", ""))
         self.waqi_input.setText(os.getenv("WAQI_TOKEN", ""))
-        self.st_user.setText(os.getenv("SPACETRACK_USER", ""))
-        self.st_pass.setText(os.getenv("SPACETRACK_PASS", ""))
+        self.st_user.setText(os.getenv("SPACETRACK_LOGIN", ""))
+        self.st_pass.setText(os.getenv("SPACETRACK_PASSW", ""))
+        self.awvx_input.setText(os.getenv("AVWX_TOKEN", ""))
         self.update_json_status()
 
 class AnalyticsWindow(QWidget):
@@ -729,7 +732,7 @@ class AerooSpaceApp(QWidget):
 
     def start_analyzing(self, btn):
         try:
-            with open(r"resources\settings.json", 'r') as f: 
+            with open(r"resources/settings.json", 'r') as f: 
                 settings = json.load(f)
                 keys_status = settings.get("set_keys", False)
 

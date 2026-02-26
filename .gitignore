@@ -1,10 +1,11 @@
 .venv/
 .env
 *.gguf
-assets/.devnotes/*
-modules/__pycache__/
-resources/.devlog/*.log
-resources/reports/*.json
+*.pyc
+assets/.devnotes/
+builds/
+resources/.devlog/
+resources/reports/
 resources/settings.json
 
 # Unused fonts

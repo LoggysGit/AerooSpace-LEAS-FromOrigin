@@ -8,7 +8,13 @@ from datetime import datetime
 from timezonefinder import TimezoneFinder
 import pytz
 import calendar
+
 from dotenv import load_dotenv, set_key
+import certifi
+
+os.environ['SSL_CERT_FILE'] = certifi.where()
+os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+
 from PySide6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit, QMessageBox)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon
 from PySide6.QtCore import Qt, Signal, QThread, QSize
@@ -16,10 +22,15 @@ from PySide6.QtCore import Qt, Signal, QThread, QSize
 import modules.prompter as prompter
 import modules.simulator as simulator
 
+def get_path(relative_path):
+    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS
+    else: base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
 # === Constants ===
-STYLES = "assets/styles.qss"
-REPORTS_PATH= "resources/reports/"
-ENVIRONMENT_PATH = ".env" 
+STYLES = get_path(os.path.join("assets", "styles.qss"))
+REPORTS_PATH = get_path(os.path.join("resources", "reports"))
+ENVIRONMENT_PATH = get_path(".env")
 
 # === UI ===
 class HistoryItem(QFrame):
@@ -219,7 +230,7 @@ class SettingsWindow(QWidget):
             self.awvx_input.text().strip()
         ]
         status = all(required)
-        settings_path = os.path.join("resources", "settings.json")
+        settings_path = get_path(os.path.join("resources", "settings.json"))
         try:
             data = {}
             if os.path.exists(settings_path):
@@ -487,14 +498,17 @@ class AerooSpaceApp(QWidget):
     point_containers = []
 
     def load_fonts(self):
-        QFontDatabase.addApplicationFont("assets/fonts/KronaOne.ttf")
-        QFontDatabase.addApplicationFont("assets/fonts/JetBrainsMono/JetBrainsMono-Regular.ttf")
+        font_path_krona = get_path(os.path.join("assets", "fonts", "KronaOne.ttf"))
+        font_path_jb = get_path(os.path.join("assets", "fonts", "JetBrainsMono", "JetBrainsMono-Regular.ttf"))
+        QFontDatabase.addApplicationFont(font_path_krona)
+        QFontDatabase.addApplicationFont(font_path_jb)
 
     def setup_spaceports(self, combo):
-        SPACEPORT_PATH = "resources/spaceports.json"
+        SPACEPORT_PATH = get_path(os.path.join("resources", "spaceports.json"))
         combo.addItem("custom", "custom")
         try:
-            with open(SPACEPORT_PATH, "r", encoding="utf-8") as f: self.spaceports_data = json.load(f)
+            with open(SPACEPORT_PATH, "r", encoding="utf-8") as f: self.spaceports_data = json.load(f) # Open file
+            # Add items
             for name in self.spaceports_data.keys():
                 display_name = name.replace("_", " ")
                 combo.addItem(display_name, name)
@@ -507,22 +521,23 @@ class AerooSpaceApp(QWidget):
         if key and key in self.spaceports_data and key != "custom":
             data = self.spaceports_data[key]
             lat, lon = data["coordinates"]
-
+            # Text Content
             lat_inp.setText(str(lat))
             lon_inp.setText(str(lon))
-
+            # Block
             lat_inp.setReadOnly(True)
             lon_inp.setReadOnly(True)
-
+            # Block Color
             lat_inp.setStyleSheet("background-color: #2b2b2b; color: #888;")
             lon_inp.setStyleSheet("background-color: #2b2b2b; color: #888;")
 
             if "timezone" in data: tz_inp.setText(data["timezone"])
             else: self.update_tz(lat_inp, lon_inp, tz_inp)
         else:
+            # Unblock Color
             lat_inp.setStyleSheet("background-color: #1e1e1e; color: white; border: 1px solid #3d3d3d;")
             lon_inp.setStyleSheet("background-color: #1e1e1e; color: white; border: 1px solid #3d3d3d;")
-
+            # Unblock
             lat_inp.setReadOnly(False)
             lon_inp.setReadOnly(False)
 
@@ -539,18 +554,17 @@ class AerooSpaceApp(QWidget):
         try:
             current_text = widget.text().strip()
             if not current_text:
-                widget.setText(str(min_val))
+                widget.setText(str(min_val)) # Empty
                 return
             val = float(current_text)
-            if val < min_val: widget.setText(str(min_val))
-            elif val > max_val: widget.setText(str(max_val))
+            if val < min_val: widget.setText(str(min_val)) # Minimal boundary
+            elif val > max_val: widget.setText(str(max_val)) # Maximal boundary
             else:
-                if val == int(val): widget.setText(str(int(val)))
+                if val == int(val): widget.setText(str(int(val))) # Convert int to str
                 else: widget.setText(str(val))
-        except ValueError:
-            widget.setText(str(min_val))
+        except ValueError: widget.setText(str(min_val))
 
-    def get_last_day(self, y, m): return calendar.monthrange(y, m)[1]
+    def get_last_day(self, y, m): return calendar.monthrange(y, m)[1] # Last day in M month in Y year
     def update_tz(self, lat_field, lon_field, tz_field):
         try:
             lat = lat_field.text()
@@ -562,6 +576,7 @@ class AerooSpaceApp(QWidget):
             
             if timezone_str is None: return "+0"
             timezone = pytz.timezone(timezone_str)
+
             dt = datetime.now()
             offset_seconds = timezone.utcoffset(dt).total_seconds()
             offset_hours = int(offset_seconds / 3600)
@@ -580,7 +595,6 @@ class AerooSpaceApp(QWidget):
         while self.history_layout.count():
             child = self.history_layout.takeAt(0)
             if child.widget(): child.widget().deleteLater()
-
         if not os.path.exists(REPORTS_PATH):
             os.makedirs(REPORTS_PATH)
             return
@@ -596,6 +610,7 @@ class AerooSpaceApp(QWidget):
 
             item = HistoryItem(f_path, name, date_str)
 
+            # Connect functions
             item.delete_requested.connect(self.delete_report)
             item.refresh_requested.connect(self.refresh_report_data)
             item.open_requested.connect(lambda path=f_path: self.show_analytics_window(path))
@@ -640,6 +655,7 @@ class AerooSpaceApp(QWidget):
         self.setup_spaceports(spaceport_combo)
         spaceport_combo.currentIndexChanged.connect(lambda i: self.handle_spaceport_combo(spaceport_combo, latitude_coord, longitude_coord, tz_edit, i))
         
+        # COORDINATES
         row_coords = QHBoxLayout()
         latitude_coord = QLineEdit("28.3922")
         longitude_coord = QLineEdit("-80.6077")
@@ -732,26 +748,34 @@ class AerooSpaceApp(QWidget):
 
     def start_analyzing(self, btn):
         try:
-            with open(r"resources/settings.json", 'r') as f: 
-                settings = json.load(f)
-                keys_status = settings.get("set_keys", False)
+            # Check all nessesary settings
+            settings_path = get_path(os.path.join("resources", "settings.json"))
+            try:
+                with open(settings_path, 'r', encoding='utf-8') as f: 
+                    settings = json.load(f)
+                    keys_status = settings.get("set_keys", False)
+            except Exception as e:
+                print(f"Error reading settings: {e}")
+                keys_status = False
 
             if not keys_status:
                 QMessageBox.warning(self, "Settings", "Please configure API keys in settings first!")
                 return
-            
-            if not os.path.isfile("assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"):
+
+            model_check_path = get_path(os.path.join("assets", "model", "Qwen2.5-7B-Instruct-Q4_K_M.gguf"))
+            if not os.path.isfile(model_check_path):
                 QMessageBox.warning(self, "Model", "Model not found.")
                 return
-
+            
             print("[A] ANALYZING STARTED!")
-            btn.setEnabled(False)
+            btn.setEnabled(False) # Disable Analysis button for preventing one more function call
             self.show_loading()
 
             mission_input = []
 
             for container in self.point_containers:
                 try:
+                    # Extract all info
                     lat_w = container.findChild(QLineEdit, "lat_input")
                     lon_w = container.findChild(QLineEdit, "lon_input")
                     y_w = container.findChild(QLineEdit, "year_input")
@@ -760,9 +784,9 @@ class AerooSpaceApp(QWidget):
                     tz_w = container.findChild(QLineEdit, "tz_input")
                     sp_w = container.findChild(QComboBox, "spaceport_input")
 
-                    if not all([lat_w, lon_w, y_w, m_w, d_w, tz_w, sp_w]):
-                        raise ValueError("Some input fields are missing!")
+                    if not all([lat_w, lon_w, y_w, m_w, d_w, tz_w, sp_w]): raise ValueError("Some input fields are missing!")
 
+                    # Check coord format
                     try:
                         lat_val = float(lat_w.text().replace(',', '.'))
                         lon_val = float(lon_w.text().replace(',', '.'))
@@ -790,6 +814,7 @@ class AerooSpaceApp(QWidget):
                 btn.setEnabled(True)
                 return
 
+            # Start worker
             self.worker = AnalysisWorker(mission_input, prompter)
             self.worker.finished.connect(lambda f_name: self.on_analysis_finished(f_name, btn))
             self.worker.error.connect(lambda err: self.on_analysis_error(err, btn))
@@ -833,7 +858,8 @@ class AerooSpaceApp(QWidget):
 
         self.btn_settings = QPushButton(self)
         self.btn_settings.setFixedSize(90, 90)
-        self.btn_settings.setIcon(QIcon("assets/ui/settings.svg"))
+        sett_icon_path = get_path(os.path.join("assets", "ui", "settings.svg"))
+        self.btn_settings.setIcon(QIcon(sett_icon_path))
         self.btn_settings.setIconSize(QSize(40, 40))
         self.btn_settings.setCursor(Qt.PointingHandCursor)
         self.btn_settings.setObjectName("SettingsBtn")

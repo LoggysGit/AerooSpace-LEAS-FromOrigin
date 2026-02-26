@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+import sys
 import json
 import random
 from datetime import datetime
@@ -8,10 +9,19 @@ from datetime import datetime
 import modules.controller as model  # AI Model Controller
 import modules.parser as fetcher # Data Parser
 
+def get_path(relative_path):
+    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if os.path.basename(current_dir) == 'modules': base_path = os.path.dirname(current_dir)
+        else: base_path = current_dir
+    return os.path.normpath(os.path.join(base_path, relative_path))
+
 # === Constants ===
-MODEL_PATH = "assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"
-PROMPTS_JSON_PATH = "resources/prompts.json"
-REPORTS_PATH = "resources/reports/"
+MODEL_PATH = get_path(os.path.join("assets", "model", "Qwen2.5-7B-Instruct-Q4_K_M.gguf"))
+PROMPTS_JSON_PATH = get_path(os.path.join("resources", "prompts.json"))
+REPORTS_DIR = get_path(os.path.join("resources", "reports"))
+if not os.path.exists(REPORTS_DIR): os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # === Objects & Variables ===
 ai = model.AIModel(MODEL_PATH)
@@ -31,7 +41,7 @@ async def getPrompt(spaceport, lat, lon, datetime, timezone):
     print(" ========== PREDICTION COMPLETE! DATA: ========== ") #
     print(clear_ans) #
     data_fetcher.updatePredicted(clear_ans)
-    print("============================================================")
+    print("==================================================")
     # Get Full Prompt
     full_prompt = data_fetcher.getEstimatingPrompt()
     return clear_ans, full_prompt
@@ -71,7 +81,7 @@ async def analyseAllPoints(points):
 
     fetched, predicted, analytics = [], [], []
     for input in points:
-        print(" = POINTS ANALYSIS STARTED... = ")
+        print(" = POINT ANALYSIS STARTED... = ")
         try:
             pr, prompt = await getPrompt(input["spaceport"], input["coordinates"][0], input["coordinates"][1], input["target_timestamp"], input["timezone"])
 
@@ -82,12 +92,12 @@ async def analyseAllPoints(points):
 
             review = await ai.analyze(prompt)
             analytics.append(review)
-            print(" = POINTS ANALYZED SUCCESSFULLY! = ")
+            print(" = POINT ANALYZED SUCCESSFULLY! = ")
         except Exception as e: print(f" = ANALYZING ERROR: {e} = ")
 
     comparsion = ""
     if len(points) > 1:
-        print(" = COMPARING STARTED... = ")
+        print(" = COMPARING... = ")
         comp_prompt = getComparsionPrompt(points, fetched, analytics)
         comparsion = await ai.analyze(comp_prompt)
         print(" = COMPARSION VERDICT SUCCESSFUL! = ")
@@ -108,17 +118,17 @@ def ensure_obj(data):
     if isinstance(data, str):
         cleaned = clean_json_string(data)
         try: 
-            print(f"DEBUG: Trying to parse: {data}")
+            print(f"[A]: Trying to parse: {data}")
             parsed = json.loads(cleaned)
             return [parsed] if isinstance(parsed, dict) else parsed
         except Exception as e:
-            print(f"[A] JSON Parse logError: {e}")
+            print(f"[A] JSON Parse Error: {e}")
             return []   
     if isinstance(data, dict): return [data]
 
     return []
 def save_report(points, fetched, predicted, analytics, comparsion):
-    print("Saving data...")
+    print("[A] Saving data...")
     try:
         file_data = {
             "point_count": len(points),
@@ -139,4 +149,4 @@ def save_report(points, fetched, predicted, analytics, comparsion):
         return file_name
     except Exception as e:
         print(f"[A]: Failed to save file: {e}")
-        return "logError.json"
+        return "null.json"

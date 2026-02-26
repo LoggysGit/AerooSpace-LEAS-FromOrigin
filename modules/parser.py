@@ -248,6 +248,8 @@ class DataControlManager:
             "api_key": NASA_KEY
         }
 
+        print(f"[i] NASA Params: {params}")
+
         async with httpx.AsyncClient() as client:
             try:
                 print("[*] Requesting REAL-TIME NASA Space Weather...")

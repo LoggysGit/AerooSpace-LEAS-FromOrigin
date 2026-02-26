@@ -25,3 +25,8 @@ assets/fonts/JetBrainsMono/JetBrainsMonoNL-SemiBold.ttf
 assets/fonts/JetBrainsMono/JetBrainsMonoNL-SemiBoldItalic.ttf
 assets/fonts/JetBrainsMono/JetBrainsMonoNL-Thin.ttf
 assets/fonts/JetBrainsMono/JetBrainsMonoNL-ThinItalic.ttf
+
+# Build
+*.spec
+build/
+dist/

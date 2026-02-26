@@ -739,6 +739,10 @@ class AerooSpaceApp(QWidget):
             if not keys_status:
                 QMessageBox.warning(self, "Settings", "Please configure API keys in settings first!")
                 return
+            
+            if not os.path.isfile("assets/model/Qwen2.5-7B-Instruct-Q4_K_M.gguf"):
+                QMessageBox.warning(self, "Model", "Model not found.")
+                return
 
             print("[A] ANALYZING STARTED!")
             btn.setEnabled(False)
@@ -813,7 +817,8 @@ class AerooSpaceApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("AerooSpace LEAS")
-        self.resize(1100, 700)
+        #self.resize(1100, 720)
+        self.setFixedSize(1100, 720)
         self.setStyleSheet(STYLE_SHEET)
 
         main_layout = QHBoxLayout(self)
@@ -828,7 +833,7 @@ class AerooSpaceApp(QWidget):
 
         self.btn_settings = QPushButton(self)
         self.btn_settings.setFixedSize(90, 90)
-        self.btn_settings.setIcon(QIcon("resources/ui/settings.svg"))
+        self.btn_settings.setIcon(QIcon("assets/ui/settings.svg"))
         self.btn_settings.setIconSize(QSize(40, 40))
         self.btn_settings.setCursor(Qt.PointingHandCursor)
         self.btn_settings.setObjectName("SettingsBtn")

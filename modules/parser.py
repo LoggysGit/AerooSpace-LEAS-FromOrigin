@@ -278,6 +278,7 @@ class DataControlManager:
             "identity": SPACETRACK_LOGIN,
             "password": SPACETRACK_PASSW
         }
+        print(f"[i] SpaceTrack Auth Data: {auth_data}")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -850,7 +851,7 @@ RETURN ONLY A VALID JSON OBJECT:
     "kp_pr": float,
     "flight_shedules_pr": int, // Estimated number of flights near point in the target date
     "wind_degrees_pr": [int, int, int, int, int, int, int, int, int, int] // 10 values for different altitudes
-    "prediction_confidence": int // Overall confidence in the prediction (0-100)%. The more far the target time from now, the lower must be this parameter. Also, lower this parameter if some fetched data is missing
+    "prediction_confidence": int // Overall confidence in the prediction (0-100)%. The more far the target time from now, the lower must be this parameter. Also, lower this parameter dramatically if some of fetched data is missing (or >40% of all data is 0/[]).
 }}
 """
                 

@@ -142,7 +142,7 @@ def save_report(points, fetched, predicted, analytics, comparsion):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         file_name = f"report_{timestamp}_{random.randint(1, 9999)}.json"
 
-        full_path = os.path.join(REPORTS_PATH, file_name)
+        full_path = os.path.join(PROMPTS_JSON_PATH, file_name)
         with open(full_path, "w", encoding="utf-8") as f: json.dump(file_data, f, ensure_ascii=False, indent=4)
             
         print(f"[A]: Data successfully saved to {file_name}")

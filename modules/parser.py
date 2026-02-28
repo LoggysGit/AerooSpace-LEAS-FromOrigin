@@ -15,12 +15,17 @@ import ephem
 import skyfield.api as sf
 
 def get_path(relative_path):
-    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    if getattr(sys, 'frozen', False):
+        external_targets = [".env", "reports"]
+        is_external = any(relative_path.startswith(target) for target in external_targets)
+        
+        if is_external: base_path = os.path.dirname(sys.executable)
+        else: base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
     else:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.basename(current_dir) == 'modules': base_path = os.path.dirname(current_dir)
-        else: base_path = current_dir
+        base_path = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'modules' else current_dir 
     return os.path.normpath(os.path.join(base_path, relative_path))
+
 # - Dotenv -
 from dotenv import load_dotenv
 env_path = get_path(".env")
@@ -773,6 +778,8 @@ CALCULATION:
     # ================================== MAIN ====================================
     
     async def fetchAllData(self):
+        self.dotenvDebug()
+
         lat, lon = self.input_data["coordinates"]
         target_time, tz = self.input_data["target_timestamp"], self.input_data["timezone"]
         input_time = self.utc_time(target_time, tz)
@@ -806,6 +813,29 @@ CALCULATION:
         await self.parseFlights(lat, lon)
     
     # ================================== OUTPUT FUNCTIONS ==================================
+
+    def dotenvDebug(self):
+        print("-" * 30)
+        calculated_env_path = get_path(".env")
+        print(f"[DEBUG] Calculated .env path: {calculated_env_path}")
+        print(f"[DEBUG] Exists: {os.path.exists(calculated_env_path)}")
+        print(f"[DEBUG] Current Working Directory: {os.getcwd()}")
+        print(f"[DEBUG] Sys.executable: {sys.executable}")
+
+        if os.path.exists(calculated_env_path):
+            try:
+                with open(calculated_env_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    print("[DEBUG] .env Content keys:")
+                    for line in content.splitlines():
+                        if '=' in line and not line.startswith('#'):
+                            key = line.split('=')[0]
+                            print(f"  - Found key: {key}")
+            except Exception as e:
+                print(f"[DEBUG] Could not read .env: {e}")
+        else:
+            print("[DEBUG] ALERT: .env file NOT FOUND at the calculated path!")
+        print("-" * 30)
 
     def getFetchedData(self): return self.data
 

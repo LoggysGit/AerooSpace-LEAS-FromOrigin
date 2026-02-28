@@ -23,13 +23,20 @@ import modules.prompter as prompter
 import modules.simulator as simulator
 
 def get_path(relative_path):
-    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS
-    else: base_path = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_path, relative_path)
+    if getattr(sys, 'frozen', False):
+        external_targets = [".env", "reports"]
+        is_external = any(relative_path.startswith(target) for target in external_targets)
+        
+        if is_external: base_path = os.path.dirname(sys.executable)
+        else: base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'modules' else current_dir 
+    return os.path.normpath(os.path.join(base_path, relative_path))
 
 # === Constants ===
 STYLES = get_path(os.path.join("assets", "styles.qss"))
-REPORTS_PATH = get_path(os.path.join("resources", "reports"))
+REPORTS_PATH = get_path("reports")#get_path(os.path.join("resources", "reports"))
 ENVIRONMENT_PATH = get_path(".env")
 
 # === UI ===

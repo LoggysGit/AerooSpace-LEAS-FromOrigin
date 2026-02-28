@@ -10,17 +10,21 @@ import modules.controller as model  # AI Model Controller
 import modules.parser as fetcher # Data Parser
 
 def get_path(relative_path):
-    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    if getattr(sys, 'frozen', False):
+        external_targets = [".env", "reports"]
+        is_external = any(relative_path.startswith(target) for target in external_targets)
+        
+        if is_external: base_path = os.path.dirname(sys.executable)
+        else: base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
     else:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.basename(current_dir) == 'modules': base_path = os.path.dirname(current_dir)
-        else: base_path = current_dir
+        base_path = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'modules' else current_dir 
     return os.path.normpath(os.path.join(base_path, relative_path))
 
 # === Constants ===
 MODEL_PATH = get_path(os.path.join("assets", "model", "Qwen2.5-7B-Instruct-Q4_K_M.gguf"))
 PROMPTS_JSON_PATH = get_path(os.path.join("resources", "prompts.json"))
-REPORTS_DIR = get_path(os.path.join("resources", "reports"))
+REPORTS_DIR = get_path("reports")#get_path(os.path.join("resources", "reports"))
 if not os.path.exists(REPORTS_DIR): os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # === Objects & Variables ===

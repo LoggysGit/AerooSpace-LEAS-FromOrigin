@@ -4,11 +4,15 @@ import json
 from huggingface_hub import hf_hub_download
 
 def get_path(relative_path):
-    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    if getattr(sys, 'frozen', False):
+        external_targets = [".env", "reports"]
+        is_external = any(relative_path.startswith(target) for target in external_targets)
+        
+        if is_external: base_path = os.path.dirname(sys.executable)
+        else: base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
     else:
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.basename(current_dir) == 'modules': base_path = os.path.dirname(current_dir)
-        else: base_path = current_dir
+        base_path = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'modules' else current_dir 
     return os.path.normpath(os.path.join(base_path, relative_path))
 
 def get_model():

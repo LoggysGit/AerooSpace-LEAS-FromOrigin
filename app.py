@@ -258,9 +258,11 @@ class SettingsWindow(QWidget):
         self.save_to_env("SPACETRACK_PASSW", self.st_pass.text())
 
     def load_settings_from_env(self):
-        if not os.path.exists(".env"): open(".env", 'a').close()
         env_path = get_path(".env")
-        load_dotenv(dotenv_path=env_path)
+        if not os.path.exists(env_path): 
+            with open(env_path, 'a') as f: pass
+    
+        load_dotenv(dotenv_path=env_path, override=True)
         print(env_path)
         self.app_key_input.setText(os.getenv("APP_KEY", ""))
         self.acc_key_input.setText(os.getenv("ACC_KEY", ""))

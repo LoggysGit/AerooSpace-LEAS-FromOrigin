@@ -29,20 +29,21 @@ def get_path(relative_path):
 # - Dotenv -
 from dotenv import load_dotenv
 env_path = get_path(".env")
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=True)
 
 # - Constants & Defines -
 PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'prompts.json')
 # Altitude to Pressure Mapping
 PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
 HISTORY_WINDOW_YEARS = 5
-SPACETRACK_LIMIT = 5 # FOR TESTING (20)
+SPACETRACK_LIMIT = 15
 # - Keys -
-NASA_KEY = os.getenv("NASA_API_KEY")
-SPACETRACK_LOGIN = os.getenv("SPACETRACK_LOGIN")
-SPACETRACK_PASSW = os.getenv("SPACETRACK_PASSW")
-WAQI_TOKEN = os.getenv("WAQI_TOKEN")
-AVWX_TOKEN = os.getenv("AVWX_TOKEN")
+def get_nasa_key(): return os.getenv("NASA_API_KEY")
+def get_waqi_key(): return os.getenv("WAQI_TOKEN")
+def get_avwx_key(): return os.getenv("AVWX_TOKEN")
+def get_st_login(): return os.getenv("SPACETRACK_LOGIN")
+def get_st_pass(): return os.getenv("SPACETRACK_PASSW")
+
 # - Refers -
 APIS = {
     # NASA: Solar flares and Radiation (Space Weather)
@@ -228,7 +229,7 @@ class DataControlManager:
 
     async def parseWAQI(self, lat, lon): # --- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ---
         url = APIS["WAQI"] + f"{lat};{lon}/"
-        params = {"token": WAQI_TOKEN}
+        params = {"token": get_waqi_key()}
 
         async with httpx.AsyncClient() as client:
             try:
@@ -259,7 +260,7 @@ class DataControlManager:
 
         params = {
             "startDate": start_date,
-            "api_key": NASA_KEY
+            "api_key": get_nasa_key()
         }
 
         print(f"[i] NASA Params: {params}")
@@ -291,8 +292,8 @@ class DataControlManager:
 
     async def getSpaceTrack(self): # --- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ---
         auth_data = {
-            "identity": SPACETRACK_LOGIN,
-            "password": SPACETRACK_PASSW
+            "identity": get_st_login(),
+            "password": get_st_pass()
         }
         print(f"[i] SpaceTrack Auth Data: {auth_data}")
 
@@ -322,7 +323,7 @@ class DataControlManager:
 
     async def getNearestICAO(self, lat:float, lon:float): # --- [X] ICAO NEAR COORINATESDS (NOT IN USE) ---
         url = f"https://avwx.rest/api/station/near/{lat},{lon}"
-        headers = {"Authorization": f"BEARER {AVWX_TOKEN}"}
+        headers = {"Authorization": f"BEARER {get_avwx_key()}"}
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
@@ -463,7 +464,7 @@ class DataControlManager:
                 params = {
                     "startDate": start_dt.strftime("%Y-%m-%d"),
                     "endDate": end_dt.strftime("%Y-%m-%d"),
-                    "api_key": NASA_KEY
+                    "api_key": get_nasa_key()
                 }
 
                 try:

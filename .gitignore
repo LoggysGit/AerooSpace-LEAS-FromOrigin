@@ -5,7 +5,7 @@
 assets/.devnotes/
 builds/
 resources/.devlog/
-resources/reports/
+reports/
 resources/settings.json
 
 # Unused fonts

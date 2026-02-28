@@ -248,7 +248,7 @@ class SettingsWindow(QWidget):
 
     def save_to_env(self, key, value):
         try:
-            set_key(".env", key, value)
+            set_key(get_path(".env"), key, value)
             self.error_console.append(f"[SUCCESS] Saved {key}")
             self.update_json_status()
         except Exception as e: self.error_console.append(f"[ERROR] {key}: {e}")
@@ -259,7 +259,9 @@ class SettingsWindow(QWidget):
 
     def load_settings_from_env(self):
         if not os.path.exists(".env"): open(".env", 'a').close()
-        load_dotenv(".env")
+        env_path = get_path(".env")
+        load_dotenv(dotenv_path=env_path)
+        print(env_path)
         self.app_key_input.setText(os.getenv("APP_KEY", ""))
         self.acc_key_input.setText(os.getenv("ACC_KEY", ""))
         self.nasa_input.setText(os.getenv("NASA_API_KEY", ""))

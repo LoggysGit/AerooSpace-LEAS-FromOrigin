@@ -750,7 +750,10 @@ CALCULATION:
         latitude_rad = float(math.radians(self.input_data["coordinates"][0]))
         height_msl = int(self.data["surface"]["height_msl"]) if "height_msl" in self.data["surface"] else 0
         slope_degree = int(self.data["surface"]["slope_degree"]) if "slope_degree" in self.data["surface"] else 0
-        if self.input_data["spaceport"] != "custom": slope_degree = 0
+        # Spaceport check
+        if self.input_data["spaceport"] != "custom": 
+            flights = 0
+            slope_degree = 0
 
         return self.getLCS(
             press, vis, clouds, min_wind_temp, avg_humidity, 

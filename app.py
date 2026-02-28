@@ -551,20 +551,31 @@ class AerooSpaceApp(QWidget):
         layout.addLayout(container)
 
     def fix_range(self, widget, min_val, max_val):
+        print(min_val, max_val)
         try:
             current_text = widget.text().strip()
             if not current_text:
                 widget.setText(str(min_val)) # Empty
                 return
             val = float(current_text)
-            if val < min_val: widget.setText(str(min_val)) # Minimal boundary
-            elif val > max_val: widget.setText(str(max_val)) # Maximal boundary
+            if val < min_val: 
+                widget.setText(str(min_val)) # Minimal boundary
+                print(f"{val} < {min_val}") 
+            elif val > max_val: 
+                widget.setText(str(max_val)) # Maximal boundary
+                print(f"{val} > {max_val}") 
             else:
                 if val == int(val): widget.setText(str(int(val))) # Convert int to str
                 else: widget.setText(str(val))
-        except ValueError: widget.setText(str(min_val))
+        except ValueError as e:
+            print(f"Input Error: {e}")
+            widget.setText(str(min_val))
 
     def get_last_day(self, y, m): return calendar.monthrange(y, m)[1] # Last day in M month in Y year
+    def get_start_day(self, m):
+        now = datetime.now()
+        if m == now.month: return now.day
+        else: return 1
     def update_tz(self, lat_field, lon_field, tz_field):
         try:
             lat = lat_field.text()
@@ -694,7 +705,7 @@ class AerooSpaceApp(QWidget):
         if target_day > last_day_in_month:  target_day = last_day_in_month
         day_edit = QLineEdit(str(target_day).zfill(2))
         day_edit.setFixedWidth(45)
-        day_edit.editingFinished.connect(lambda: self.fix_range(day_edit, now.day, self.get_last_day(int(year_edit.text()), int(month_edit.text()))))
+        day_edit.editingFinished.connect(lambda: self.fix_range(day_edit, self.get_start_day(month_edit.text()), self.get_last_day(int(year_edit.text()), int(month_edit.text()))))
         day_edit.setObjectName("day_input")
         self.add_field_to_layout(row_date, "Day", day_edit)
         

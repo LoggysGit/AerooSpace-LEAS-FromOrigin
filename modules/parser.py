@@ -9,13 +9,22 @@ from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
 import httpx
 #import asyncio
-# - Dotenv -
-from dotenv import load_dotenv
-load_dotenv()
 # - Tools -
 import geomag
 import ephem
 import skyfield.api as sf
+
+def get_path(relative_path):
+    if getattr(sys, 'frozen', False): base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if os.path.basename(current_dir) == 'modules': base_path = os.path.dirname(current_dir)
+        else: base_path = current_dir
+    return os.path.normpath(os.path.join(base_path, relative_path))
+# - Dotenv -
+from dotenv import load_dotenv
+env_path = get_path(".env")
+load_dotenv(dotenv_path=env_path)
 
 # - Constants & Defines -
 PROMPTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'resources', 'prompts.json')

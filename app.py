@@ -4,11 +4,6 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-import certifi
-
-os.environ['SSL_CERT_FILE'] = certifi.where()
-os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-
 # === Modules ===
 import modules.interface as interface
 

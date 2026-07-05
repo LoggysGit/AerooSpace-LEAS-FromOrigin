@@ -4,14 +4,12 @@ import re
 import json
 import asyncio
 
-from datetime import datetime
-
-from dotenv import load_dotenv, set_key
-
 import pytz
 import calendar
-
+from datetime import datetime
 from timezonefinder import TimezoneFinder
+
+from dotenv import load_dotenv, set_key
 
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel, QComboBox, QLineEdit, QPushButton, QScrollArea, QTextEdit, QMessageBox)
 from PySide6.QtGui import QFontDatabase, QFont, QIcon
@@ -507,6 +505,7 @@ class AerooSpaceApp(QWidget):
         except Exception as e:
             print(f"[A] Error loading spaceports: {e}")
             self.spaceports_data = {}
+    
     def handle_spaceport_combo(self, combo, lat_inp, lon_inp, tz_inp, index):
         key = combo.itemData(index)
 
@@ -568,6 +567,7 @@ class AerooSpaceApp(QWidget):
         now = datetime.now()
         if m == now.month: return now.day
         else: return 1
+
     def update_tz(self, lat_field, lon_field, tz_field):
         try:
             lat = lat_field.text()
@@ -629,8 +629,7 @@ class AerooSpaceApp(QWidget):
                 self.refresh_history()
         except Exception as e: print(f"File deletion failed: {e}")
 
-    def refresh_report_data(self, path):
-        pass
+    def refresh_report_data(self, path): pass
 
     def setup_input_ui(self, parent_layout, point_id):
         point_container = QWidget()
@@ -726,6 +725,7 @@ class AerooSpaceApp(QWidget):
             self.points_count += 1
             self.setup_input_ui(self.points_layout, self.points_count)
             if self.points_count >= 3: self.btn_add.hide()
+
     def remove_point(self, widget):
         widget.deleteLater()
         self.points_count -= 1
@@ -735,8 +735,7 @@ class AerooSpaceApp(QWidget):
     def show_loading(self):
         self.loading_window = AerooLoadingScreen()
         self.loading_window.show()
-    def update_loading(self):
-        pass
+    def update_loading(self): pass
     def hide_loading(self):
         self.loading_window = AerooLoadingScreen()
         self.loading_window.hide()
@@ -835,9 +834,11 @@ class AerooSpaceApp(QWidget):
             self.show_analytics_window(current_analytics_path)
         except Exception as e: print(f"[A] Error showing window: {e}")
         self.finalize_ui(btn)
+    
     def on_analysis_error(self, err, btn):
         print(f"[A] Analysis Thread Error: {err}")
         self.finalize_ui(btn)
+    
     def finalize_ui(self, btn):
         self.hide_loading()
         btn.setEnabled(True)

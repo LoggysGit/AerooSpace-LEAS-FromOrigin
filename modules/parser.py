@@ -4,9 +4,11 @@ import re
 import sys
 import math
 import json
+
 import datetime
 from datetime import datetime, timedelta, timezone as dt_tz
 from dateutil.relativedelta import relativedelta
+
 import httpx
 
 # - Tools -
@@ -20,36 +22,6 @@ import modules.lib as lib
 from dotenv import load_dotenv
 env_path = lib.get_path(".env")
 load_dotenv(dotenv_path=env_path, override=True)
-
-# Altitude to Pressure Mapping
-PRESSURE_LEVELS = ["1000hPa", "925hPa", "850hPa", "700hPa", "500hPa", "300hPa", "250hPa", "100hPa", "50hPa", "10hPa"]
-
-# - Keys -
-def get_nasa_key(): return os.getenv("NASA_API_KEY")
-def get_waqi_key(): return os.getenv("WAQI_TOKEN")
-def get_avwx_key(): return os.getenv("AVWX_TOKEN")
-def get_st_login(): return os.getenv("SPACETRACK_LOGIN")
-def get_st_pass(): return os.getenv("SPACETRACK_PASSW")
-
-# - Refers -
-APIS = {
-    # NASA: Solar flares and Radiation (Space Weather)
-    "NASA_DONKI": "https://api.nasa.gov/DONKI/",
-    # Space-Track: TLE Data for debris and satellites
-    "SPACETRACK_AUTH": "https://www.space-track.org/ajaxauth/login",
-    "SPACETRACK_QUERY": f"https://www.space-track.org/basicspacedata/query/class/gp/EPOCH/%3Enow-30/MEAN_MOTION/%3E11.25/format/json/limit/{lib.SPACETRACK_LIMIT}",
-    # OpenMeteo: High altitude wind, temp and air density (Pressure levels)
-    "METEO": "https://api.open-meteo.com/v1/forecast",
-    "AQI_TRENDS": "https://air-quality-api.open-meteo.com/v1/air-quality?",
-    # OpenStreetMap: RevQVBoxLayout,erse geocoding (City/Country name)
-    "OSM": "https://nominatim.openstreetmap.org/reverse",
-    # OpenTopo: Surface elevation (SRTM 30m model)
-    "OPENTOPO": "https://api.opentopodata.org/v1/srtm30m",
-    # WAQI: Ground air quality sensors (Chemical composition)
-    "WAQI": "https://api.waqi.info/feed/geo:",
-    # Flights
-    "AVIATION_TRAFFIC": "https://opensky-network.org/api/states/all",
-}
 
 class DataControlManager:
     spaceport_def = False
@@ -131,18 +103,18 @@ class DataControlManager:
     }
 
     predicted = {
-    "pressure_pr": float,
-    "visibility_pr": int, # Base on pressure, temperature, cloud_cover, aqi and historical cloudiness
-    "cloud_cover_pr": int,
-    "humidity_pr": int,
-    "temperature_pr": float,
-    "flare_pr": float, # Probability 0-100 based on recent M/X flare frequency
-    "aqi_pr": float, # Predicted AQI
-    "avg_wind_speed_pr": float,
-    "max_wind_speed_pr": float,
-    "kp_pr": float,
-    "wind_degrees_pr": [], # 10 values for different altitudes
-    "prediction_confidence": int # Overall confidence in the prediction (0-100)%
+        "pressure_pr": float,
+        "visibility_pr": int, # Base on pressure, temperature, cloud_cover, aqi and historical cloudiness
+        "cloud_cover_pr": int,
+        "humidity_pr": int,
+        "temperature_pr": float,
+        "flare_pr": float, # Probability 0-100 based on recent M/X flare frequency
+        "aqi_pr": float, # Predicted AQI
+        "avg_wind_speed_pr": float,
+        "max_wind_speed_pr": float,
+        "kp_pr": float,
+        "wind_degrees_pr": [], # 10 values for different altitudes
+        "prediction_confidence": int # Overall confidence in the prediction (0-100)%
     }
     # ================================== API REQUESTS ==================================
 
@@ -150,10 +122,8 @@ class DataControlManager:
 
     async def parseMeteo(self, lat, lon): # --- OPEN-METEO - DATA: [Wind Profile, Summary, Forecast] ---
         forecast = 7
-        hourly_params = [
-            "surface_pressure", "relativehumidity_2m", "cloudcover", "visibility"
-        ]
-        for p in PRESSURE_LEVELS:
+        hourly_params = [ "surface_pressure", "relativehumidity_2m", "cloudcover", "visibility" ]
+        for p in lib.PRESSURE_LEVELS:
             hourly_params.append(f"temperature_{p}")
             hourly_params.append(f"windspeed_{p}")
             hourly_params.append(f"winddirection_{p}")
@@ -178,7 +148,7 @@ class DataControlManager:
         async with httpx.AsyncClient() as client:
             try:
                 lib.log(f"[*] Requesting Atmospheric Data for: {lat}, {lon}...")
-                response = await client.get(APIS["METEO"], params=params)
+                response = await client.get(lib.APIS["METEO"], params=params)
 
                 if response.status_code == 200:
                     res = response.json()
@@ -196,7 +166,7 @@ class DataControlManager:
 
                     # --- Wind Profile ---
                     new_profile = []
-                    for p in PRESSURE_LEVELS:
+                    for p in lib.PRESSURE_LEVELS:
                         alt = pressure_map.get(p, 0)
                         speed = h.get(f"windspeed_{p}", [0])[0]
                         direction = h.get(f"winddirection_{p}", [0])[0]
@@ -207,16 +177,15 @@ class DataControlManager:
 
                     self.data["wind_profile_now"] = new_profile
 
-                    lib.log(f"[V] Success! Wind profile updated for {len(PRESSURE_LEVELS)} levels.")
-                else:
-                    lib.log(f"[!] API Error: {response.status_code}")
+                    lib.log(f"[V] Success! Wind profile updated for {len(lib.PRESSURE_LEVELS)} levels.")
 
-            except Exception as e:
-                lib.log(f"[X] Connection Error: {e}")
+                else: lib.log(f"[!] API Error: {response.status_code}")
+
+            except Exception as e: lib.log(f"[X] Connection Error: {e}")
 
     async def parseWAQI(self, lat, lon): # --- WAQI - DATA: [AQI: pm2_5, pm10, no2, so2, o3, co] ---
-        url = APIS["WAQI"] + f"{lat};{lon}/"
-        params = {"token": get_waqi_key()}
+        url = lib.APIS["WAQI"] + f"{lat};{lon}/"
+        params = {"token": lib.get_waqi_key()}
 
         async with httpx.AsyncClient() as client:
             try:
@@ -247,7 +216,7 @@ class DataControlManager:
 
         params = {
             "startDate": start_date,
-            "api_key": get_nasa_key()
+            "api_key": lib.get_nasa_key()
         }
 
         lib.log(f"[i] NASA Params: {params}")
@@ -255,8 +224,8 @@ class DataControlManager:
         async with httpx.AsyncClient() as client:
             try:
                 lib.log("[*] Requesting REAL-TIME NASA Space Weather...")
-                gst_resp = await client.get(APIS["NASA_DONKI"] + "GST", params=params)
-                flr_resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
+                gst_resp = await client.get(lib.APIS["NASA_DONKI"] + "GST", params=params)
+                flr_resp = await client.get(lib.APIS["NASA_DONKI"] + "FLR", params=params)
 
                 self.data["space_environment"]["kp_index_now"] = 0
                 self.data["space_environment"]["xray_flux_now"] = "A0.0" 
@@ -274,24 +243,24 @@ class DataControlManager:
                     if flr_data: self.data["space_environment"]["xray_flux_now"] = flr_data[-1].get('classType', 'B')
 
                 lib.log(f"[V] Success! Space Weather is synced with current time.")
-            except Exception as e:
-                lib.log(f"[X] NASA Connection Error: {e}")
+
+            except Exception as e: lib.log(f"[X] NASA Connection Error: {e}")
 
     async def getSpaceTrack(self): # --- SPACE-TRACK - DATA: [Space: objects (TLE/Debris)] ---
         auth_data = {
-            "identity": get_st_login(),
-            "password": get_st_pass()
+            "identity": lib.get_st_login(),
+            "password": lib.get_st_pass()
         }
         lib.log(f"[i] SpaceTrack Auth Data: {auth_data}")
 
         async with httpx.AsyncClient() as client:
             try:
                 lib.log("[*] Authenticating with Space-Track...")
-                auth_resp = await client.post(APIS["SPACETRACK_AUTH"], data=auth_data)
+                auth_resp = await client.post(lib.APIS["SPACETRACK_AUTH"], data=auth_data)
 
                 if auth_resp.status_code == 200 and "set-cookie" in auth_resp.headers:
                     lib.log("[+] Authentication successful. Fetching TLE data...")
-                    tle_resp = await client.get(APIS["SPACETRACK_QUERY"], cookies=auth_resp.cookies)
+                    tle_resp = await client.get(lib.APIS["SPACETRACK_QUERY"], cookies=auth_resp.cookies)
 
                     if tle_resp.status_code == 200:
                         tle_data = tle_resp.json()
@@ -307,26 +276,6 @@ class DataControlManager:
             except Exception as e:
                 lib.log(f"[X] Space-Track Connection Error: {e}")
                 return []
-
-    async def getNearestICAO(self, lat:float, lon:float): # --- [X] ICAO NEAR COORINATESDS (NOT IN USE) ---
-        url = f"https://avwx.rest/api/station/near/{lat},{lon}"
-        headers = {"Authorization": f"BEARER {get_avwx_key()}"}
-
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            try:
-                resp = await client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    result = resp.json()
-                    if isinstance(result, list) and len(result) > 0:
-                        icao = result[0].get('station', {}).get('icao')
-                        if icao: return icao
-                    lib.log(f"[-] No station found for coords: {lat}, {lon}")
-                else:
-                    lib.log(f"[!] Station lookup API error: {resp.status_code}")
-            except Exception as e:
-                lib.log(f"[X] Station lookup connection failed: {e}")
-
-        return None
 
     async def parseFlights(self, lat, lon, radius_km=200): # --- FLIGHTS NEAR lat, lon ---
         lat_delta = radius_km / 111.1
@@ -344,7 +293,7 @@ class DataControlManager:
         lib.log("[*] Recieving flights...")
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.get(APIS["AVIATION_TRAFFIC"], params=params, timeout=10.0)
+                resp = await client.get(lib.APIS["AVIATION_TRAFFIC"], params=params, timeout=10.0)
 
                 if resp.status_code == 200:
                     states = resp.json().get("states") or []
@@ -361,7 +310,9 @@ class DataControlManager:
 
                     self.data["aviation"]["shedules_now"] = flights
                     lib.log(f"[V] Success! Flight shedules updated.")
+
                 else: lib.log(f"[!] Flights API Error: {resp.status_code}")
+
             except Exception as e:  lib.log(f"[X] Flights API Error: {e}")
 
     # -------------- STRATEGIC FUNCTIONS --------------
@@ -405,7 +356,7 @@ class DataControlManager:
 
         lat, lon = self.input_data['coordinates']
         fetch_address = (
-            f"{APIS['AQI_TRENDS']}latitude={lat}&longitude={lon}"
+            f"{lib.APIS['AQI_TRENDS']}latitude={lat}&longitude={lon}"
             f"&hourly=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide,sulphur_dioxide"
             f"&start_date={date_str}&end_date={date_str}"
         )
@@ -451,12 +402,12 @@ class DataControlManager:
                 params = {
                     "startDate": start_dt.strftime("%Y-%m-%d"),
                     "endDate": end_dt.strftime("%Y-%m-%d"),
-                    "api_key": get_nasa_key()
+                    "api_key": lib.get_nasa_key()
                 }
 
                 try:
                     # Check Solar Flares (FLR) for that historical window
-                    resp = await client.get(APIS["NASA_DONKI"] + "FLR", params=params)
+                    resp = await client.get(lib.APIS["NASA_DONKI"] + "FLR", params=params)
 
                     if resp.status_code == 200:
                         flares = resp.json()
@@ -523,6 +474,7 @@ class DataControlManager:
                         "is_visible": alt_val > 500 # Can we see it physically (or will be in 10 minutes)
                     })
                 lib.log(">[V] TLE Object processed")
+
             except Exception as e:
                 lib.log(f">[!] TLE Object process error: {e}")
                 continue
@@ -541,13 +493,13 @@ class DataControlManager:
             "accept-language": "en"
         }
         headers = {
-            "User-Agent": "AerooSpaceCompetitionLEASFromOrigin/1.0"
+            "User-Agent": "LEASFromOrigin/1.0"
         }
 
         async with httpx.AsyncClient() as client:
             try:
                 lib.log(f"[*] Requesting OSM for: {lat}, {lon}...")
-                response = await client.get(APIS["OSM"], params=params, headers=headers)
+                response = await client.get(lib.APIS["OSM"], params=params, headers=headers)
 
                 if response.status_code == 200:
                     res = response.json()
@@ -589,7 +541,7 @@ class DataControlManager:
         async with httpx.AsyncClient() as client:
             try:
                 lib.log(f"[*] Requesting Elevation & Slope for: {lat}, {lon}...")
-                response = await client.get(APIS["OPENTOPO"], params=params)
+                response = await client.get(lib.APIS["OPENTOPO"], params=params)
 
                 if response.status_code == 200:
                     res = response.json().get("results", [])
